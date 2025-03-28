@@ -5,9 +5,8 @@ set   conteudo [read $fileID]
 close $fileID
 
 set infos   [split  $conteudo "\n"]
-set pdata   [lindex $infos 0]
-set tmp_dir [lindex $infos 1]
-set bin_dir [lindex $infos 2]
+set tmp_dir [lindex $infos 0]
+set bin_dir [lindex $infos 1]
 
 # Separador de Sinais ---------------------------------------------------------
 
@@ -208,15 +207,8 @@ for {set i 0} {$i < $nfacs } {incr i} {
 	}
 }
 
-set v_int [gtkwave::setCurrentTranslateProc $bin_dir/f2i_gtkw.exe]
 gtkwave::addSignalsFromList $var_int
-if {[string compare $pdata "float"] == 0} {
-    gtkwave::/Edit/Data_Format/Binary
-    gtkwave::installProcFilter $v_int
-} else {
-    gtkwave::/Edit/Data_Format/Signed_Decimal
-}
-
+gtkwave::/Edit/Data_Format/Signed_Decimal
 gtkwave::/Edit/Color_Format/Orange
 gtkwave::/Edit/UnHighlight_All
 
