@@ -196,7 +196,7 @@ proc ::safe::disallowTk {interpPath} {
 proc ::safe::tkDelete {W window child} {
 
     # we are going to be called for each widget... skip untill it's
-    # top level
+    # TopLevel
 
     Log $child "Called tkDelete $W $window" NOTICE
     if {[::interp exists $child]} {

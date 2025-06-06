@@ -1818,7 +1818,7 @@ proc tcltest::SubstArguments {argList} {
 # match variable, if it matches an element in skip, or if one of the
 # elements of "constraints" turns out not to be true.
 #
-# If testLevel is 1, then this is a top level test, and we record
+# If testLevel is 1, then this is a TopLevel test, and we record
 # pass/fail information; otherwise, this information is not logged and
 # is not added to running totals.
 #
