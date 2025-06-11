@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "outDir": "./built",
+        "allowJs": true,
+        "lib": [ "es6" ],
+        "target": "es5"
+    },
+    "include": [
+        "./lib/*",
+        "./lib/@types"
+    ]
+}
