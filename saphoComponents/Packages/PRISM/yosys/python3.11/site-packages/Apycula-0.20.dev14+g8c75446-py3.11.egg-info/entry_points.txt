@@ -1,0 +1,4 @@
+[console_scripts]
+gowin_pack = apycula.gowin_pack:main
+gowin_pll = apycula.gowin_pll:main
+gowin_unpack = apycula.gowin_unpack:main
