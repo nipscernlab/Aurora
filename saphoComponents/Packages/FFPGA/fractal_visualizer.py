@@ -5,624 +5,451 @@ import argparse
 import threading
 import numpy as np
 from datetime import datetime
-from PIL import Image, ImageTk, ImageFilter
+from PIL import Image, ImageTk, ImageEnhance, ImageFilter
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk
+from scipy import ndimage
+import subprocess
 
 
-class ModernFractalVisualizer:
-    def __init__(self, output_file_path, palette="grayscale", width=128, height=128):
+class EnhancedFractalVisualizer:
+    def __init__(self, output_file_path, palette="viridis", width=256, height=256):
         self.output_file_path = output_file_path
         self.palette_name = palette
         self.width = width
         self.height = height
         self.pixels_read = 0
         self.total_pixels = self.width * self.height
-        self.image_data = np.zeros((self.height, self.width), dtype=np.uint8)
+        self.image_data = np.zeros((self.height, self.width), dtype=np.float32)
         self.running = True
         self.file_position = 0
         self.photo_image = None
-        self.is_processing = False
         self.last_update_time = 0
         
-        # Color scheme - AMOLED with purple accent
+        # Enhanced color scheme
         self.colors = {
-            'bg': '#000000',           # Pure black for AMOLED
-            'surface': '#0a0a0a',      # Very dark surface
-            'surface_variant': '#1a1a1a',  # Slightly lighter surface
-            'primary': '#8b5cf6',      # Purple accent
-            'primary_variant': '#7c3aed',  # Darker purple
-            'secondary': '#a855f7',    # Light purple
-            'text_primary': '#ffffff',  # Pure white text
-            'text_secondary': '#b3b3b3', # Dimmed white
-            'text_tertiary': '#666666', # More dimmed
-            'success': '#10b981',      # Green for success
-            'warning': '#f59e0b',      # Orange for warning
-            'error': '#ef4444',        # Red for error
+            'bg': '#0a0a0a', 'surface': '#1a1a1a', 'primary': '#8b5cf6',
+            'secondary': '#06b6d4', 'text_primary': '#ffffff', 'text_secondary': '#a3a3a3',
+            'success': '#10b981', 'warning': '#f59e0b', 'error': '#ef4444'
         }
         
-        self._prepare_palettes()
+        self._setup_palettes()
         self._setup_ui()
         
-        # Start monitoring in a separate thread for better performance
-        self.monitor_thread = threading.Thread(target=self._monitor_file_thread, daemon=True)
+        self.monitor_thread = threading.Thread(target=self._monitor_file, daemon=True)
         self.monitor_thread.start()
 
-    def _prepare_palettes(self):
-        """Prepare optimized color palettes using numpy for fast indexing"""
+    def _setup_palettes(self):
+        """Setup enhanced artistic color palettes"""
+        def create_palette(colors, name):
+            if name == "plasma":
+                t = np.linspace(0, 1, 256)
+                r = np.clip(255 * (0.05 + 0.5 * np.sin(2 * np.pi * t + 0.5)), 0, 255)
+                g = np.clip(255 * (0.3 + 0.7 * np.sin(2 * np.pi * t + 1.5)), 0, 255)
+                b = np.clip(255 * (0.8 + 0.2 * np.sin(2 * np.pi * t + 2.5)), 0, 255)
+            elif name == "cosmic":
+                t = np.linspace(0, 1, 256)
+                r = np.clip(255 * (0.1 + 0.9 * t**2), 0, 255)
+                g = np.clip(255 * (0.2 + 0.8 * np.sin(np.pi * t)), 0, 255)
+                b = np.clip(255 * (0.9 - 0.5 * t), 0, 255)
+            elif name == "fire":
+                t = np.linspace(0, 1, 256)
+                r = np.clip(255 * np.minimum(1, 4 * t), 0, 255)
+                g = np.clip(255 * np.maximum(0, 4 * t - 1), 0, 255)
+                b = np.clip(255 * np.maximum(0, 4 * t - 3), 0, 255)
+            else:  # viridis
+                t = np.linspace(0, 1, 256)
+                r = np.clip(255 * (0.267 + 0.973 * t - 0.686 * t**2), 0, 255)
+                g = np.clip(255 * (0.005 + 1.420 * t - 0.680 * t**2), 0, 255)
+                b = np.clip(255 * (0.329 + 0.725 * t - 0.520 * t**2), 0, 255)
+            
+            return np.column_stack([r, g, b]).astype(np.uint8)
         
-        def create_grayscale():
-            return np.array([(i, i, i) for i in range(256)], dtype=np.uint8)
-        
-        def create_fire():
-            palette = []
-            for i in range(256):
-                if i < 64:
-                    # Black to red
-                    r, g, b = i * 4, 0, 0
-                elif i < 128:
-                    # Red to yellow
-                    r, g, b = 255, (i - 64) * 4, 0
-                elif i < 192:
-                    # Yellow to white
-                    r, g, b = 255, 255, (i - 128) * 4
-                else:
-                    # White variations
-                    r, g, b = 255, 255, 255 - (i - 192)
-                palette.append((min(255, r), min(255, g), min(255, b)))
-            return np.array(palette, dtype=np.uint8)
-        
-        def create_ocean():
-            palette = []
-            for i in range(256):
-                if i < 85:
-                    # Deep blue
-                    r, g, b = 0, 0, i * 3
-                elif i < 170:
-                    # Blue to cyan
-                    r, g, b = 0, (i - 85) * 3, 255
-                else:
-                    # Cyan to white
-                    r, g, b = (i - 170) * 3, 255, 255
-                palette.append((min(255, r), min(255, g), min(255, b)))
-            return np.array(palette, dtype=np.uint8)
-        
-        def create_rainbow():
-            palette = []
-            for i in range(256):
-                # HSV to RGB conversion for smooth rainbow
-                h = i / 255.0 * 360
-                s = 1.0
-                v = 1.0
-                
-                c = v * s
-                x = c * (1 - abs((h / 60) % 2 - 1))
-                m = v - c
-                
-                if 0 <= h < 60:
-                    r, g, b = c, x, 0
-                elif 60 <= h < 120:
-                    r, g, b = x, c, 0
-                elif 120 <= h < 180:
-                    r, g, b = 0, c, x
-                elif 180 <= h < 240:
-                    r, g, b = 0, x, c
-                elif 240 <= h < 300:
-                    r, g, b = x, 0, c
-                else:
-                    r, g, b = c, 0, x
-                
-                r, g, b = int((r + m) * 255), int((g + m) * 255), int((b + m) * 255)
-                palette.append((r, g, b))
-            return np.array(palette, dtype=np.uint8)
-        
-        def create_plasma():
-            palette = []
-            for i in range(256):
-                # Plasma-like colors
-                t = i / 255.0
-                r = int(255 * (0.5 + 0.5 * np.cos(2 * np.pi * t)))
-                g = int(255 * (0.5 + 0.5 * np.cos(2 * np.pi * t + 2 * np.pi / 3)))
-                b = int(255 * (0.5 + 0.5 * np.cos(2 * np.pi * t + 4 * np.pi / 3)))
-                palette.append((r, g, b))
-            return np.array(palette, dtype=np.uint8)
-        
-        def create_viridis():
-            # Viridis colormap approximation
-            palette = []
-            for i in range(256):
-                t = i / 255.0
-                r = int(255 * (0.267 + 0.973 * t - 0.686 * t**2))
-                g = int(255 * (0.005 + 1.420 * t - 0.680 * t**2))
-                b = int(255 * (0.329 + 0.725 * t - 0.520 * t**2))
-                r, g, b = max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))
-                palette.append((r, g, b))
-            return np.array(palette, dtype=np.uint8)
-        
-        self.color_palettes = {
-            "grayscale": create_grayscale(),
-            "fire": create_fire(),
-            "ocean": create_ocean(),
-            "rainbow": create_rainbow(),
-            "plasma": create_plasma(),
-            "viridis": create_viridis(),
+        self.palettes = {
+            "viridis": create_palette(None, "viridis"),
+            "plasma": create_palette(None, "plasma"),
+            "cosmic": create_palette(None, "cosmic"),
+            "fire": create_palette(None, "fire")
         }
         
-        if self.palette_name not in self.color_palettes:
-            self.palette_name = "grayscale"
-        
-        self.current_palette = self.color_palettes[self.palette_name]
+        self.current_palette = self.palettes.get(self.palette_name, self.palettes["viridis"])
 
     def _setup_ui(self):
-        """Setup the modern UI with AMOLED theme"""
-        # Configure CustomTkinter
+        """Setup enhanced UI"""
         ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")
         
-        # Create main window
         self.root = ctk.CTk()
-        self.root.title("Fractal Visualizer")
+        self.root.title("Enhanced Fractal Visualizer")
         self.root.configure(fg_color=self.colors['bg'])
+        self.root.geometry("1400x900")
         
-        # Make window responsive
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
+        # Main layout
+        main_frame = ctk.CTkFrame(self.root, fg_color=self.colors['bg'])
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Main container
-        main_container = ctk.CTkFrame(self.root, fg_color=self.colors['bg'], corner_radius=0)
-        main_container.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
-        main_container.grid_rowconfigure(1, weight=1)
-        main_container.grid_columnconfigure(0, weight=1)
-        
-        # Header
-        self._create_header(main_container)
-        
-        # Content area
-        content_frame = ctk.CTkFrame(main_container, fg_color=self.colors['bg'], corner_radius=0)
-        content_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
-        content_frame.grid_rowconfigure(0, weight=1)
-        content_frame.grid_columnconfigure(1, weight=1)
-        
-        # Left panel (controls)
-        self._create_control_panel(content_frame)
-        
-        # Right panel (visualization)
-        self._create_visualization_panel(content_frame)
-        
-        # Setup window
-        self.root.geometry("1200x800")
-        self.root.minsize(800, 600)
-        
-        # Center window
-        self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (600)
-        y = (self.root.winfo_screenheight() // 2) - (400)
-        self.root.geometry(f"1200x800+{x}+{y}")
-
-    def _create_header(self, parent):
-        """Create modern header with title and status"""
-        header_frame = ctk.CTkFrame(parent, fg_color=self.colors['surface'], height=80, corner_radius=0)
-        header_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
-        header_frame.grid_propagate(False)
-        header_frame.grid_columnconfigure(1, weight=1)
+        # Left panel
+        left_panel = ctk.CTkFrame(main_frame, width=350, fg_color=self.colors['surface'])
+        left_panel.pack(side="left", fill="y", padx=(0, 10))
+        left_panel.pack_propagate(False)
         
         # Title
-        title_label = ctk.CTkLabel(
-            header_frame,
-            text="Fractal Visualizer",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color=self.colors['text_primary']
-        )
-        title_label.grid(row=0, column=0, padx=30, pady=20, sticky="w")
+        title = ctk.CTkLabel(left_panel, text="Fractal Visualizer", 
+                           font=ctk.CTkFont(size=24, weight="bold"))
+        title.pack(pady=20)
         
-        # Status indicator
-        self.status_indicator = ctk.CTkFrame(header_frame, fg_color=self.colors['warning'], width=12, height=12, corner_radius=6)
-        self.status_indicator.grid(row=0, column=2, padx=(10, 30), pady=20, sticky="e")
+        # Dimensions control
+        dims_frame = ctk.CTkFrame(left_panel, fg_color=self.colors['bg'])
+        dims_frame.pack(fill="x", padx=20, pady=10)
         
-        # Status text
-        self.header_status = ctk.CTkLabel(
-            header_frame,
-            text="Waiting for data...",
-            font=ctk.CTkFont(size=14),
-            text_color=self.colors['text_secondary']
-        )
-        self.header_status.grid(row=0, column=1, padx=10, pady=20, sticky="e")
-
-    def _create_control_panel(self, parent):
-        """Create control panel with palette selection and stats"""
-        control_frame = ctk.CTkFrame(parent, fg_color=self.colors['surface'], width=300, corner_radius=12)
-        control_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=0)
-        control_frame.grid_propagate(False)
+        ctk.CTkLabel(dims_frame, text="Dimensions", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
+        
+        dim_controls = ctk.CTkFrame(dims_frame, fg_color="transparent")
+        dim_controls.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(dim_controls, text="Width:").pack(side="left")
+        self.width_entry = ctk.CTkEntry(dim_controls, width=60, placeholder_text=str(self.width))
+        self.width_entry.pack(side="left", padx=5)
+        self.width_entry.insert(0, str(self.width))
+        
+        ctk.CTkLabel(dim_controls, text="Height:").pack(side="left", padx=(10, 0))
+        self.height_entry = ctk.CTkEntry(dim_controls, width=60, placeholder_text=str(self.height))
+        self.height_entry.pack(side="left", padx=5)
+        self.height_entry.insert(0, str(self.height))
+        
+        apply_btn = ctk.CTkButton(dims_frame, text="Apply Dimensions", 
+                                command=self._apply_dimensions, height=32)
+        apply_btn.pack(pady=10)
         
         # Palette selection
-        palette_section = ctk.CTkFrame(control_frame, fg_color=self.colors['surface_variant'], corner_radius=8)
-        palette_section.pack(fill="x", padx=20, pady=20)
+        palette_frame = ctk.CTkFrame(left_panel, fg_color=self.colors['bg'])
+        palette_frame.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkLabel(
-            palette_section,
-            text="Color Palette",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=self.colors['text_primary']
-        ).pack(pady=(15, 10))
+        ctk.CTkLabel(palette_frame, text="Color Palette", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
         
         self.palette_var = ctk.StringVar(value=self.palette_name)
-        self.palette_menu = ctk.CTkOptionMenu(
-            palette_section,
-            variable=self.palette_var,
-            values=list(self.color_palettes.keys()),
-            command=self._on_palette_change,
-            fg_color=self.colors['primary'],
-            button_color=self.colors['primary_variant'],
-            button_hover_color=self.colors['secondary'],
-            text_color=self.colors['text_primary'],
-            font=ctk.CTkFont(size=12)
-        )
-        self.palette_menu.pack(pady=(0, 15), padx=15, fill="x")
+        palette_menu = ctk.CTkOptionMenu(palette_frame, variable=self.palette_var,
+                                       values=list(self.palettes.keys()),
+                                       command=self._change_palette)
+        palette_menu.pack(pady=10, fill="x", padx=10)
         
-        # Progress section
-        progress_section = ctk.CTkFrame(control_frame, fg_color=self.colors['surface_variant'], corner_radius=8)
-        progress_section.pack(fill="x", padx=20, pady=(0, 20))
+        # Enhancement controls
+        enhance_frame = ctk.CTkFrame(left_panel, fg_color=self.colors['bg'])
+        enhance_frame.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkLabel(
-            progress_section,
-            text="Progress",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=self.colors['text_primary']
-        ).pack(pady=(15, 10))
+        ctk.CTkLabel(enhance_frame, text="Enhancement", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
         
-        # Progress bar
-        self.progress_bar = ctk.CTkProgressBar(
-            progress_section,
-            progress_color=self.colors['primary'],
-            fg_color=self.colors['bg'],
-            height=8
-        )
-        self.progress_bar.pack(pady=(0, 10), padx=15, fill="x")
-        self.progress_bar.set(0)
+        self.sharpness_var = ctk.DoubleVar(value=2.0)
+        ctk.CTkLabel(enhance_frame, text="Sharpness:").pack()
+        sharpness_slider = ctk.CTkSlider(enhance_frame, from_=0.5, to=5.0, 
+                                       variable=self.sharpness_var, command=self._update_display)
+        sharpness_slider.pack(fill="x", padx=10, pady=5)
         
-        # Progress text
-        self.progress_text = ctk.CTkLabel(
-            progress_section,
-            text="0%",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=self.colors['primary']
-        )
-        self.progress_text.pack(pady=(0, 15))
+        self.contrast_var = ctk.DoubleVar(value=1.5)
+        ctk.CTkLabel(enhance_frame, text="Contrast:").pack()
+        contrast_slider = ctk.CTkSlider(enhance_frame, from_=0.5, to=3.0,
+                                      variable=self.contrast_var, command=self._update_display)
+        contrast_slider.pack(fill="x", padx=10, pady=5)
         
-        # Stats section
-        stats_section = ctk.CTkFrame(control_frame, fg_color=self.colors['surface_variant'], corner_radius=8)
-        stats_section.pack(fill="x", padx=20, pady=(0, 20))
+        # Progress
+        progress_frame = ctk.CTkFrame(left_panel, fg_color=self.colors['bg'])
+        progress_frame.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkLabel(
-            stats_section,
-            text="Statistics",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=self.colors['text_primary']
-        ).pack(pady=(15, 10))
+        ctk.CTkLabel(progress_frame, text="Progress", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
         
-        # Stats labels
-        self.pixels_label = ctk.CTkLabel(
-            stats_section,
-            text=f"Pixels: 0 / {self.total_pixels:,}",
-            font=ctk.CTkFont(size=12),
-            text_color=self.colors['text_secondary']
-        )
-        self.pixels_label.pack(pady=(0, 5))
+        self.progress_bar = ctk.CTkProgressBar(progress_frame)
+        self.progress_bar.pack(fill="x", padx=10, pady=5)
         
-        self.dimensions_label = ctk.CTkLabel(
-            stats_section,
-            text=f"Dimensions: {self.width} × {self.height}",
-            font=ctk.CTkFont(size=12),
-            text_color=self.colors['text_secondary']
-        )
-        self.dimensions_label.pack(pady=(0, 5))
+        self.progress_label = ctk.CTkLabel(progress_frame, text="0%")
+        self.progress_label.pack(pady=5)
         
-        self.file_label = ctk.CTkLabel(
-            stats_section,
-            text=f"File: {os.path.basename(self.output_file_path)}",
-            font=ctk.CTkFont(size=12),
-            text_color=self.colors['text_secondary']
-        )
-        self.file_label.pack(pady=(0, 15))
+        # Status
+        self.status_label = ctk.CTkLabel(left_panel, text="Waiting for data...", 
+                                       font=ctk.CTkFont(size=12))
+        self.status_label.pack(pady=20)
         
-        # Control buttons
-        button_frame = ctk.CTkFrame(control_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=20, pady=(0, 20))
+        # Buttons
+        btn_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=20, pady=10)
         
-        self.refresh_btn = ctk.CTkButton(
-            button_frame,
-            text="Refresh",
-            command=self._on_refresh,
-            fg_color=self.colors['primary'],
-            hover_color=self.colors['primary_variant'],
-            font=ctk.CTkFont(size=12, weight="bold"),
-            height=35
-        )
-        self.refresh_btn.pack(fill="x", pady=(0, 10))
+        refresh_btn = ctk.CTkButton(btn_frame, text="Refresh", command=self._refresh)
+        refresh_btn.pack(fill="x", pady=5)
         
-        self.save_btn = ctk.CTkButton(
-            button_frame,
-            text="Save Image",
-            command=self._save_image,
-            fg_color=self.colors['success'],
-            hover_color=self._adjust_color(self.colors['success'], 0.8),
-            font=ctk.CTkFont(size=12, weight="bold"),
-            height=35
-        )
-        self.save_btn.pack(fill="x")
+        save_btn = ctk.CTkButton(btn_frame, text="Save Image", command=self._save_image,
+                               fg_color=self.colors['success'])
+        save_btn.pack(fill="x", pady=5)
+        
+        # Right panel - Canvas
+        canvas_frame = ctk.CTkFrame(main_frame, fg_color=self.colors['surface'])
+        canvas_frame.pack(side="right", fill="both", expand=True)
+        
+        self.canvas = tk.Canvas(canvas_frame, bg=self.colors['bg'], highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True, padx=10, pady=10)
+        self.canvas.bind('<Configure>', self._on_canvas_resize)
 
-    def _create_visualization_panel(self, parent):
-        """Create visualization panel with canvas"""
-        viz_frame = ctk.CTkFrame(parent, fg_color=self.colors['surface'], corner_radius=12)
-        viz_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=0)
-        viz_frame.grid_rowconfigure(0, weight=1)
-        viz_frame.grid_columnconfigure(0, weight=1)
-        
-        # Canvas container
-        canvas_container = ctk.CTkFrame(viz_frame, fg_color=self.colors['bg'], corner_radius=8)
-        canvas_container.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        canvas_container.grid_rowconfigure(0, weight=1)
-        canvas_container.grid_columnconfigure(0, weight=1)
-        
-        # Canvas
-        self.canvas = tk.Canvas(
-            canvas_container,
-            bg=self.colors['bg'],
-            highlightthickness=0,
-            bd=0
-        )
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        
-        # Bind canvas resize
-        self.canvas.bind('<Configure>', self._on_canvas_configure)
+    def _apply_dimensions(self):
+        """Apply new dimensions and restart processing"""
+        try:
+            new_width = int(self.width_entry.get())
+            new_height = int(self.height_entry.get())
+            
+            if new_width > 0 and new_height > 0 and new_width <= 2048 and new_height <= 2048:
+                self.width = new_width
+                self.height = new_height
+                self.total_pixels = self.width * self.height
+                self.image_data = np.zeros((self.height, self.width), dtype=np.float32)
+                self.pixels_read = 0
+                self.file_position = 0
+                self.canvas.delete("all")
+                self.status_label.configure(text=f"Dimensions updated: {self.width}x{self.height}")
+            else:
+                self.status_label.configure(text="Invalid dimensions (1-2048)")
+        except ValueError:
+            self.status_label.configure(text="Invalid dimension values")
 
-    def _on_canvas_configure(self, event):
-        """Handle canvas resize"""
-        if hasattr(self, 'photo_image') and self.photo_image:
-            self._update_canvas_display()
-
-    def _on_palette_change(self, palette_name):
-        """Handle palette change"""
+    def _change_palette(self, palette_name):
+        """Change color palette"""
         self.palette_name = palette_name
-        self.current_palette = self.color_palettes[palette_name]
+        self.current_palette = self.palettes[palette_name]
         self._update_display()
 
-    def _on_refresh(self):
-        """Handle refresh button click"""
-        self.pixels_read = 0
-        self.file_position = 0
-        self.image_data.fill(0)
-        self._update_ui_state()
-        self.canvas.delete("all")
-
-    def _monitor_file_thread(self):
-        """Monitor file in separate thread"""
+    def _monitor_file(self):
+        """Monitor file for changes"""
         while self.running:
             try:
                 if os.path.exists(self.output_file_path):
                     self._read_file_data()
-                time.sleep(0.05)  # 50ms polling interval
+                time.sleep(0.05)
             except Exception as e:
-                print(f"Error monitoring file: {e}", file=sys.stderr)
+                print(f"Monitor error: {e}")
                 time.sleep(0.1)
 
     def _read_file_data(self):
-        """Read new data from file with optimized buffering"""
+        """Read and process file data"""
         try:
             with open(self.output_file_path, 'r') as f:
                 f.seek(self.file_position)
-                # Read in chunks for better performance
-                chunk = f.read(8192)
+                chunk = f.read(4096)
+                
                 if chunk:
-                    lines = chunk.splitlines()
-                    # Handle partial lines
-                    if not chunk.endswith('\n') and len(lines) > 1:
-                        # Put back the last incomplete line
-                        incomplete_line = lines[-1]
-                        lines = lines[:-1]
-                        f.seek(f.tell() - len(incomplete_line))
-                    
+                    lines = chunk.strip().split('\n')
                     new_pixels = []
+                    
                     for line in lines:
-                        line = line.strip()
-                        if line and line.isdigit():
-                            pixel_value = max(0, min(255, int(line)))
-                            new_pixels.append(pixel_value)
+                        if line.strip() and line.strip().isdigit():
+                            new_pixels.append(int(line.strip()))
                     
                     if new_pixels:
-                        self._process_new_pixels(new_pixels)
+                        self._process_pixels(new_pixels)
                     
                     self.file_position = f.tell()
         except Exception as e:
-            print(f"Error reading file: {e}", file=sys.stderr)
+            print(f"Read error: {e}")
 
-    def _process_new_pixels(self, new_pixels):
-        """Process new pixels with batch updates"""
-        for pixel_value in new_pixels:
+    def _process_pixels(self, pixels):
+        """Process new pixel data"""
+        for pixel in pixels:
             if self.pixels_read >= self.total_pixels:
                 break
             
-            y = self.pixels_read // self.width
-            x = self.pixels_read % self.width
-            
-            if y < self.height and x < self.width:
-                self.image_data[y, x] = pixel_value
+            y, x = divmod(self.pixels_read, self.width)
+            if y < self.height:
+                # Normalize to 0-1 range for better processing
+                self.image_data[y, x] = pixel / 255.0
                 self.pixels_read += 1
         
-        # Update UI periodically (not for every pixel)
+        # Update UI periodically
         current_time = time.time()
-        if current_time - self.last_update_time > 0.1:  # Update every 100ms
-            self.root.after_idle(self._update_ui_state)
+        if current_time - self.last_update_time > 0.1:
+            self.root.after_idle(self._update_progress)
             self.last_update_time = current_time
-        
-        if self.pixels_read >= self.total_pixels:
-            self.root.after_idle(self._on_completion)
 
-    def _update_ui_state(self):
-        """Update UI state and display"""
-        # Update progress
+    def _update_progress(self):
+        """Update progress and display"""
         progress = self.pixels_read / self.total_pixels
         self.progress_bar.set(progress)
-        self.progress_text.configure(text=f"{int(progress * 100)}%")
+        self.progress_label.configure(text=f"{int(progress * 100)}%")
         
-        # Update stats
-        self.pixels_label.configure(text=f"Pixels: {self.pixels_read:,} / {self.total_pixels:,}")
-        
-        # Update status
         if self.pixels_read == 0:
-            self.header_status.configure(text="Waiting for data...")
-            self.status_indicator.configure(fg_color=self.colors['warning'])
+            self.status_label.configure(text="Waiting for data...")
         elif self.pixels_read >= self.total_pixels:
-            self.header_status.configure(text="Complete")
-            self.status_indicator.configure(fg_color=self.colors['success'])
+            self.status_label.configure(text="Complete")
         else:
-            current_row = self.pixels_read // self.width
-            self.header_status.configure(text=f"Processing row {current_row + 1}/{self.height}")
-            self.status_indicator.configure(fg_color=self.colors['primary'])
+            row = self.pixels_read // self.width
+            self.status_label.configure(text=f"Processing row {row + 1}/{self.height}")
         
-        # Update display
         self._update_display()
 
-    def _update_display(self):
-        """Update the fractal display with current data"""
+    def _update_display(self, *args):
+        """Update fractal display with enhancements"""
         if self.pixels_read == 0:
             return
         
-        # Calculate visible rows
+        # Get visible portion
         visible_rows = min(self.height, (self.pixels_read + self.width - 1) // self.width)
         if visible_rows == 0:
             return
         
-        # Create RGB image from current data
-        visible_data = self.image_data[:visible_rows, :]
-        rgb_image = self.current_palette[visible_data]
+        # Get data and apply enhancements
+        data = self.image_data[:visible_rows, :].copy()
         
-        # Convert to PIL Image
-        pil_image = Image.fromarray(rgb_image, mode='RGB')
+        # Apply artistic enhancements
+        data = self._enhance_data(data)
         
-        # Apply smoothing for better visual quality
-        if visible_rows > 1:
-            pil_image = pil_image.filter(ImageFilter.SMOOTH_MORE)
+        # Convert to color image
+        indices = np.clip(data * 255, 0, 255).astype(np.uint8)
+        rgb_image = self.current_palette[indices]
+        
+        # Create PIL image
+        pil_image = Image.fromarray(rgb_image, 'RGB')
+        
+        # Apply final enhancements
+        pil_image = self._apply_image_enhancements(pil_image)
         
         self.photo_image = pil_image
-        self._update_canvas_display()
+        self._update_canvas()
 
-    def _update_canvas_display(self):
-        """Update canvas with current image"""
+    def _enhance_data(self, data):
+        """Apply artistic enhancements to data"""
+        if data.size == 0:
+            return data
+        
+        # Apply edge enhancement
+        try:
+            # Gaussian blur for smoothing
+            smoothed = ndimage.gaussian_filter(data, sigma=0.5)
+            
+            # Edge detection
+            edges = ndimage.sobel(smoothed)
+            
+            # Combine original with edges
+            enhanced = data + 0.3 * edges
+            
+            # Normalize
+            enhanced = np.clip(enhanced, 0, 1)
+            
+            # Apply gamma correction for better contrast
+            enhanced = np.power(enhanced, 0.8)
+            
+            return enhanced
+        except:
+            return data
+
+    def _apply_image_enhancements(self, image):
+        """Apply PIL-based enhancements"""
+        try:
+            # Sharpness
+            enhancer = ImageEnhance.Sharpness(image)
+            image = enhancer.enhance(self.sharpness_var.get())
+            
+            # Contrast
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(self.contrast_var.get())
+            
+            # Slight brightness boost
+            enhancer = ImageEnhance.Brightness(image)
+            image = enhancer.enhance(1.1)
+            
+            return image
+        except:
+            return image
+
+    def _update_canvas(self):
+        """Update canvas display"""
         if not self.photo_image:
             return
         
-        # Get canvas dimensions
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
         
         if canvas_width <= 1 or canvas_height <= 1:
             return
         
-        # Calculate scaling to fit canvas while maintaining aspect ratio
+        # Scale to fit canvas
         img_width, img_height = self.photo_image.size
-        scale_x = canvas_width / img_width
-        scale_y = canvas_height / img_height
-        scale = min(scale_x, scale_y) * 0.9  # Leave some margin
+        scale = min(canvas_width / img_width, canvas_height / img_height) * 0.95
         
         new_width = int(img_width * scale)
         new_height = int(img_height * scale)
         
-        # Resize image
+        # High-quality resize
         scaled_image = self.photo_image.resize((new_width, new_height), Image.LANCZOS)
         
-        # Convert to PhotoImage and display
         self.tk_image = ImageTk.PhotoImage(scaled_image)
         
         self.canvas.delete("all")
-        self.canvas.create_image(
-            canvas_width // 2, canvas_height // 2,
-            image=self.tk_image
-        )
+        self.canvas.create_image(canvas_width // 2, canvas_height // 2, image=self.tk_image)
 
-    def _on_completion(self):
-        """Handle completion of fractal generation"""
-        self.header_status.configure(text="Complete")
-        self.status_indicator.configure(fg_color=self.colors['success'])
-        self.progress_bar.set(1.0)
-        self.progress_text.configure(text="100%")
-        
-        # Auto-save if not already saved
-        self._save_image()
+    def _on_canvas_resize(self, event):
+        """Handle canvas resize"""
+        if hasattr(self, 'photo_image') and self.photo_image:
+            self._update_canvas()
+
+    def _refresh(self):
+        """Refresh visualization"""
+        self.pixels_read = 0
+        self.file_position = 0
+        self.image_data.fill(0)
+        self.canvas.delete("all")
+        self.progress_bar.set(0)
+        self.progress_label.configure(text="0%")
+        self.status_label.configure(text="Refreshed - waiting for data...")
 
     def _save_image(self):
-        """Save the current fractal image"""
+        """Save enhanced fractal image"""
         if self.pixels_read == 0:
             return
         
         try:
-            # Create full RGB image
-            rgb_image = self.current_palette[self.image_data]
-            final_image = Image.fromarray(rgb_image, mode='RGB')
+            # Create final enhanced image
+            enhanced_data = self._enhance_data(self.image_data)
+            indices = np.clip(enhanced_data * 255, 0, 255).astype(np.uint8)
+            rgb_image = self.current_palette[indices]
             
-            # Create output directory
-            output_dir = os.path.dirname(self.output_file_path) or os.getcwd()
-            images_dir = os.path.join(output_dir, "fractals")
-            os.makedirs(images_dir, exist_ok=True)
+            final_image = Image.fromarray(rgb_image, 'RGB')
+            final_image = self._apply_image_enhancements(final_image)
             
-            # Generate filename
+            # Save with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"fractal_{self.palette_name}_{timestamp}.png"
-            filepath = os.path.join(images_dir, filename)
             
-            # Save with high quality
-            final_image.save(filepath, "PNG", optimize=True)
+            output_dir = os.path.dirname(self.output_file_path) or "."
+            save_path = os.path.join(output_dir, filename)
             
-            print(f"Fractal saved to: {filepath}")
+            final_image.save(save_path, "PNG", optimize=True)
+            self.status_label.configure(text=f"Saved: {filename}")
             
         except Exception as e:
-            print(f"Error saving image: {e}", file=sys.stderr)
-
-    def _adjust_color(self, color, factor):
-        """Adjust color brightness"""
-        color = color.lstrip('#')
-        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
-        r, g, b = int(r * factor), int(g * factor), int(b * factor)
-        r, g, b = max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))
-        return f"#{r:02x}{g:02x}{b:02x}"
+            self.status_label.configure(text=f"Save error: {str(e)}")
 
     def run(self):
         """Run the application"""
-        try:
-            self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
-            self.root.mainloop()
-        except Exception as e:
-            print(f"Application error: {e}", file=sys.stderr)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.root.mainloop()
 
     def _on_closing(self):
         """Handle window closing"""
         self.running = False
         self.root.quit()
-        self.root.destroy()
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Modern Real-time Fractal Visualizer')
-    parser.add_argument('output_file', help='Path to the output file with pixel values')
-    parser.add_argument('--palette', '-p', default='grayscale',
-                        choices=['grayscale', 'fire', 'ocean', 'rainbow', 'plasma', 'viridis'],
-                        help='Initial color palette')
-    parser.add_argument('--width', type=int, default=128, help='Fractal width in pixels')
-    parser.add_argument('--height', type=int, default=128, help='Fractal height in pixels')
+    parser = argparse.ArgumentParser(description='Enhanced Fractal Visualizer')
+    parser.add_argument('output_file', help='Path to pixel data file')
+    parser.add_argument('--palette', '-p', default='viridis',
+                        choices=['viridis', 'plasma', 'cosmic', 'fire'],
+                        help='Color palette')
+    parser.add_argument('--width', type=int, default=256, help='Width in pixels')
+    parser.add_argument('--height', type=int, default=256, help='Height in pixels')
     
     args = parser.parse_args()
     
     try:
-        visualizer = ModernFractalVisualizer(
-            args.output_file,
-            palette=args.palette,
-            width=args.width,
-            height=args.height
+        visualizer = EnhancedFractalVisualizer(
+            args.output_file, args.palette, args.width, args.height
         )
         visualizer.run()
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"Error: {e}")
         sys.exit(1)
 
 

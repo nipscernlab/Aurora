@@ -1,0 +1,26 @@
+2025-06-26 08:58:17,863 - INFO - Build process started - Log file: logs\build_20250626_085817.log
+2025-06-26 08:58:17,896 - INFO - Platform: Windows 11
+2025-06-26 08:58:17,896 - INFO - Python: 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]
+2025-06-26 08:58:17,897 - INFO - Initializing pyinstaller build system
+2025-06-26 08:58:17,897 - INFO - Debug mode: False
+2025-06-26 08:58:17,897 - INFO - Starting pyinstaller build process...
+2025-06-26 08:58:17,897 - INFO - Checking build dependencies...
+2025-06-26 08:58:17,898 - INFO - Installing pyinstaller>=5.0...
+2025-06-26 08:58:19,250 - INFO - Successfully installed pyinstaller>=5.0
+2025-06-26 08:58:19,328 - INFO - Installing pillow>=9.0.0...
+2025-06-26 08:58:20,652 - INFO - Successfully installed pillow>=9.0.0
+2025-06-26 08:58:20,737 - INFO - All dependencies checked successfully
+2025-06-26 08:58:20,737 - INFO - Validating source code...
+2025-06-26 08:58:20,738 - INFO - Source validation completed
+2025-06-26 08:58:20,738 - INFO - Cleaning previous build artifacts...
+2025-06-26 08:58:20,746 - INFO - Removed directory: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\dist
+2025-06-26 08:58:20,762 - INFO - Removed directory: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\build
+2025-06-26 08:58:20,763 - INFO - Starting PyInstaller build...
+2025-06-26 08:58:20,763 - INFO - Generated spec file: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\Enhanced_Fractal_Visualizer.spec
+2025-06-26 08:58:20,763 - INFO - PyInstaller command: pyinstaller --name Enhanced_Fractal_Visualizer --onefile --windowed --icon --add-data --hidden-import customtkinter --hidden-import PIL._tkinter_finder --collect-submodules customtkinter --collect-data customtkinter --noconsole fractal_visualizer.py
+2025-06-26 08:59:42,049 - INFO - PyInstaller build completed successfully
+2025-06-26 08:59:42,049 - INFO - Performing post-build tasks...
+2025-06-26 08:59:42,050 - INFO - Created installer script: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\dist\install.sh
+2025-06-26 08:59:42,051 - INFO - Build report generated: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\dist\BUILD_REPORT.md
+2025-06-26 08:59:42,052 - INFO - Build process completed successfully!
+2025-06-26 08:59:42,052 - INFO - Executable available in: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\dist

@@ -1,0 +1,80 @@
+2025-06-26 08:51:13,595 - INFO - Build process started - Log file: logs\build_20250626_085113.log
+2025-06-26 08:51:13,628 - INFO - Platform: Windows 11
+2025-06-26 08:51:13,629 - INFO - Python: 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]
+2025-06-26 08:51:13,629 - INFO - Initializing pyinstaller build system
+2025-06-26 08:51:13,629 - INFO - Debug mode: False
+2025-06-26 08:51:13,629 - INFO - Starting pyinstaller build process...
+2025-06-26 08:51:13,629 - INFO - Checking build dependencies...
+2025-06-26 08:51:13,630 - INFO - Installing pyinstaller>=5.0...
+2025-06-26 08:51:15,002 - INFO - Successfully installed pyinstaller>=5.0
+2025-06-26 08:51:15,311 - INFO - Installing pillow>=9.0.0...
+2025-06-26 08:51:16,645 - INFO - Successfully installed pillow>=9.0.0
+2025-06-26 08:51:17,457 - INFO - All dependencies checked successfully
+2025-06-26 08:51:17,457 - INFO - Validating source code...
+2025-06-26 08:51:17,466 - INFO - Source validation completed
+2025-06-26 08:51:17,466 - INFO - Cleaning previous build artifacts...
+2025-06-26 08:51:17,467 - INFO - Removed directory: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\dist
+2025-06-26 08:51:17,468 - INFO - Removed directory: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\build
+2025-06-26 08:51:17,469 - INFO - Removed file: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\Enhanced_Fractal_Visualizer.spec
+2025-06-26 08:51:17,469 - INFO - Starting PyInstaller build...
+2025-06-26 08:51:17,470 - INFO - Generated spec file: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\Enhanced_Fractal_Visualizer.spec
+2025-06-26 08:51:17,471 - INFO - PyInstaller command: pyinstaller --name Enhanced_Fractal_Visualizer --onefile --windowed --icon --add-data --hidden-import customtkinter --hidden-import PIL._tkinter_finder --collect-submodules customtkinter --collect-data customtkinter --noconsole fractal_visualizer.py
+2025-06-26 08:51:18,826 - ERROR - PyInstaller build failed
+2025-06-26 08:51:18,826 - INFO - Build output:
+2025-06-26 08:51:18,827 - INFO -   526 INFO: PyInstaller: 6.14.1, contrib hooks: 2025.5
+2025-06-26 08:51:18,827 - INFO -   526 INFO: Python: 3.13.5
+2025-06-26 08:51:18,827 - INFO -   560 INFO: Platform: Windows-11-10.0.22621-SP0
+2025-06-26 08:51:18,827 - INFO -   560 INFO: Python environment: C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv
+2025-06-26 08:51:18,827 - INFO -   566 INFO: Module search paths (PYTHONPATH):
+2025-06-26 08:51:18,828 - INFO -   ['C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Scripts\\pyinstaller.exe',
+2025-06-26 08:51:18,828 - INFO -    'C:\\Program '
+2025-06-26 08:51:18,828 - INFO -    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.1520.0_x64__qbz5n2kfra8p0\\python313.zip',
+2025-06-26 08:51:18,828 - INFO -    'C:\\Program '
+2025-06-26 08:51:18,828 - INFO -    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.1520.0_x64__qbz5n2kfra8p0\\DLLs',
+2025-06-26 08:51:18,828 - INFO -    'C:\\Program '
+2025-06-26 08:51:18,829 - INFO -    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.1520.0_x64__qbz5n2kfra8p0\\Lib',
+2025-06-26 08:51:18,829 - INFO -    'C:\\Program '
+2025-06-26 08:51:18,829 - INFO -    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.1520.0_x64__qbz5n2kfra8p0',
+2025-06-26 08:51:18,829 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv',
+2025-06-26 08:51:18,829 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Lib\\site-packages',
+2025-06-26 08:51:18,829 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Lib\\site-packages\\win32',
+2025-06-26 08:51:18,829 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Lib\\site-packages\\win32\\lib',
+2025-06-26 08:51:18,830 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Lib\\site-packages\\Pythonwin',
+2025-06-26 08:51:18,830 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA\\venv\\Lib\\site-packages\\setuptools\\_vendor',
+2025-06-26 08:51:18,830 - INFO -    'C:\\Users\\LCOM\\Desktop\\Github\\Aurora\\saphoComponents\\Packages\\FFPGA']
+2025-06-26 08:51:18,830 - INFO -   1062 INFO: Appending 'datas' from .spec
+2025-06-26 08:51:18,830 - INFO -   Traceback (most recent call last):
+2025-06-26 08:51:18,830 - INFO -     File "<frozen runpy>", line 198, in _run_module_as_main
+2025-06-26 08:51:18,830 - INFO -     File "<frozen runpy>", line 88, in _run_code
+2025-06-26 08:51:18,830 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Scripts\pyinstaller.exe\__main__.py", line 7, in <module>
+2025-06-26 08:51:18,831 - INFO -       sys.exit(_console_script_run())
+2025-06-26 08:51:18,831 - INFO -                ~~~~~~~~~~~~~~~~~~~^^
+2025-06-26 08:51:18,831 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\__main__.py", line 231, in _console_script_run
+2025-06-26 08:51:18,831 - INFO -       run()
+2025-06-26 08:51:18,831 - INFO -       ~~~^^
+2025-06-26 08:51:18,831 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\__main__.py", line 215, in run
+2025-06-26 08:51:18,831 - INFO -       run_build(pyi_config, spec_file, **vars(args))
+2025-06-26 08:51:18,831 - INFO -       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,831 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\__main__.py", line 70, in run_build
+2025-06-26 08:51:18,832 - INFO -       PyInstaller.building.build_main.main(pyi_config, spec_file, **kwargs)
+2025-06-26 08:51:18,832 - INFO -       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,832 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\building\build_main.py", line 1282, in main
+2025-06-26 08:51:18,832 - INFO -       build(specfile, distpath, workpath, clean_build)
+2025-06-26 08:51:18,832 - INFO -       ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,832 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\building\build_main.py", line 1220, in build
+2025-06-26 08:51:18,833 - INFO -       exec(code, spec_namespace)
+2025-06-26 08:51:18,833 - INFO -       ~~~~^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,833 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\Enhanced_Fractal_Visualizer.spec", line 5, in <module>
+2025-06-26 08:51:18,833 - INFO -       a = Analysis(
+2025-06-26 08:51:18,833 - INFO -           ['fractal_visualizer.py'],
+2025-06-26 08:51:18,833 - INFO -       ...<22 lines>...
+2025-06-26 08:51:18,833 - INFO -           noarchive=False,
+2025-06-26 08:51:18,833 - INFO -       )
+2025-06-26 08:51:18,834 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\building\build_main.py", line 581, in __init__
+2025-06-26 08:51:18,834 - INFO -       for dest_name, src_name in format_binaries_and_datas(datas, workingdir=spec_dir)]
+2025-06-26 08:51:18,834 - INFO -                                  ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,834 - INFO -     File "C:\Users\LCOM\Desktop\Github\Aurora\saphoComponents\Packages\FFPGA\venv\Lib\site-packages\PyInstaller\building\utils.py", line 470, in format_binaries_and_datas
+2025-06-26 08:51:18,834 - INFO -       for src_root_path_or_glob, trg_root_dir in binaries_or_datas:
+2025-06-26 08:51:18,834 - INFO -           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-06-26 08:51:18,834 - INFO -   TypeError: cannot unpack non-iterable NoneType object
+2025-06-26 08:51:18,835 - ERROR - Build process failed!
