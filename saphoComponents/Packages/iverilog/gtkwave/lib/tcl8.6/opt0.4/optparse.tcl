@@ -251,7 +251,7 @@ proc ::tcl::OptProc {name desc body} {
         # absolute name or global namespace, name is the key
         set key $name
     } else {
-        # we are relative to some non TopLevel namespace:
+        # we are relative to some non top level namespace:
         set key "${namespace}::${name}"
     }
     OptKeyRegister $desc $key

@@ -162,7 +162,7 @@ in the order they appear on the command line.
 Ignore missing modules. Normally it is an error if a module instantiation
 refers to an undefined module. This option causes the compiler to skip
 over that instantiation. It will also stop the compiler returning an
-error if there are no TopLevel modules. This allows the compiler to be
+error if there are no top level modules. This allows the compiler to be
 used to check incomplete designs for errors.
 .TP 8
 .B -L\fIpath\fP
@@ -229,7 +229,7 @@ even if it is not necessary for the target. If the target type is a
 netlist format, the \fB\-S\fP switch is unnecessary and has no effect.
 .TP 8
 .B -s \fItopmodule\fP
-Specify the TopLevel module to elaborate. Icarus Verilog will by default
+Specify the top level module to elaborate. Icarus Verilog will by default
 choose modules that are not instantiated in any other modules, but
 sometimes that is not sufficient, or instantiates too many modules. If
 the user specifies one or more root modules with \fB\-s\fP flags, then
