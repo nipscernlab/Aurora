@@ -1,0 +1,6 @@
+[amaranth.lib.meta]
+0.5/component.json = amaranth.lib.wiring:ComponentMetadata
+
+[console_scripts]
+amaranth-rpc = amaranth.rpc:main
+
