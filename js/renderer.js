@@ -4315,6 +4315,7 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+
 function renderFileTree(files, container, level = 0, parentPath = '') {
     if (!Array.isArray(files)) {
         console.error('renderFileTree: files is not an array');
@@ -4402,6 +4403,9 @@ function renderFileTree(files, container, level = 0, parentPath = '') {
             const extension = file.name.split('.').pop().toLowerCase();
             if (extension === 'gtkw') {
                 icon.className = 'fa-solid fa-file-waveform file-item-icon';
+            }
+            else if (extension === 'asm') {
+                icon.className = 'fa-solid fa-file-lines';
             } else if (extension === 'v') {
                 icon.className = 'fa-solid fa-file-pen file-item-icon';
             } else if (extension === 'txt') {
@@ -4411,8 +4415,9 @@ function renderFileTree(files, container, level = 0, parentPath = '') {
             } else if (file.name === 'house_report.json') {
                 icon.className = 'fa-solid fa-file-export file-item-icon';
             } else if (extension === 'cmm') {
-                icon.className = 'fa-solid fa-microchip file-item-icon';
-            } else if (extension === 'mif') {
+                icon.className = 'fa-solid fa-file-code'; 
+            }
+            else if (extension === 'mif') {
                 icon.className = 'fa-solid fa-square-binary file-item-icon';
             } else {
                 icon.className = TabManager.getFileIcon(file.name);
@@ -4440,6 +4445,138 @@ function renderFileTree(files, container, level = 0, parentPath = '') {
         container.appendChild(itemWrapper);
     });
 }
+
+// Add this function to display files from fileOriented.json
+async function renderFileModeTree() {
+  const fileTree = document.getElementById('file-tree');
+  if (!fileTree) return;
+  
+  try {
+    const projectPath = window.currentProjectPath;
+    if (!projectPath) return;
+    
+    const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, 'fileOriented.json');
+    const configExists = await window.electronAPI.fileExists(fileModeConfigPath);
+    
+    if (!configExists) return;
+    
+    const configContent = await window.electronAPI.readFile(fileModeConfigPath);
+    const config = JSON.parse(configContent);
+    
+    if (!config.synthesizableFiles || config.synthesizableFiles.length === 0) return;
+    
+    fileTree.innerHTML = '';
+    fileTree.classList.add('file-mode-view');
+    
+    const container = document.createElement('div');
+    container.className = 'file-mode-list';
+    container.style.cssText = `
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    `;
+    
+    const sortedFiles = config.synthesizableFiles.sort((a, b) => {
+      if (a.starred && !b.starred) return -1;
+      if (!a.starred && b.starred) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    sortedFiles.forEach(file => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-mode-item';
+      fileItem.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3);
+        background: var(--bg-tertiary);
+        border: 1px solid ${file.starred ? 'var(--accent-primary)' : 'var(--border-primary)'};
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      `;
+      
+      fileItem.addEventListener('mouseenter', () => {
+        fileItem.style.background = 'var(--bg-quaternary)';
+        fileItem.style.borderColor = 'var(--accent-secondary)';
+      });
+      
+      fileItem.addEventListener('mouseleave', () => {
+        fileItem.style.background = 'var(--bg-tertiary)';
+        fileItem.style.borderColor = file.starred ? 'var(--accent-primary)' : 'var(--border-primary)';
+      });
+      
+      const icon = document.createElement('i');
+      icon.className = TabManager.getFileIcon(file.name);
+      icon.style.color = file.starred ? 'var(--accent-primary)' : 'var(--icon-primary)';
+      
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = file.name;
+      nameSpan.style.cssText = `
+        flex: 1;
+        font-size: var(--text-sm);
+        color: var(--text-primary);
+        font-weight: ${file.starred ? 'var(--font-semibold)' : 'var(--font-normal)'};
+      `;
+      
+      if (file.starred) {
+        const badge = document.createElement('span');
+        badge.innerHTML = '<i class="fa-solid fa-star-of-life"></i>';
+        badge.style.cssText = `
+          color: var(--accent-primary);
+          font-size: var(--text-xs);
+        `;
+        fileItem.appendChild(icon);
+        fileItem.appendChild(nameSpan);
+        fileItem.appendChild(badge);
+      } else {
+        fileItem.appendChild(icon);
+        fileItem.appendChild(nameSpan);
+      }
+      
+      fileItem.addEventListener('click', async () => {
+        try {
+          const content = await window.electronAPI.readFile(file.path);
+          TabManager.addTab(file.path, content);
+        } catch (error) {
+          console.error('Error opening file:', error);
+        }
+      });
+      
+      container.appendChild(fileItem);
+    });
+    
+    fileTree.appendChild(container);
+    
+  } catch (error) {
+    console.error('Error rendering file mode tree:', error);
+  }
+}
+
+// Export for use
+window.renderFileModeTree = renderFileModeTree;
+
+// Update the refreshFileTree function to check for File Mode
+const originalRefreshFileTree = refreshFileTree;
+refreshFileTree = async function() {
+  try {
+    const projectPath = window.currentProjectPath;
+    if (!projectPath) return originalRefreshFileTree();
+    
+    const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, 'fileOriented.json');
+    const fileModeExists = await window.electronAPI.fileExists(fileModeConfigPath);
+    
+    if (fileModeExists) {
+      await renderFileModeTree();
+    } else {
+      await originalRefreshFileTree();
+    }
+  } catch (error) {
+    console.error('Error in refreshFileTree:', error);
+  }
+};
 
 function forceFileTreeUpdate() {
     const fileTree = document.getElementById('file-tree');
@@ -6161,6 +6298,19 @@ class CompilationModule {
         this._hierarchyGenerationInProgress = false;
 
 }
+async isFileModeActive() {
+    try {
+        const projectPath = window.currentProjectPath || this.projectPath;
+        if (!projectPath) return false;
+        
+        const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, 'fileOriented.json');
+        return await window.electronAPI.fileExists(fileModeConfigPath);
+    } catch (error) {
+        console.error('Error checking File Mode:', error);
+        return false;
+    }
+}
+
 
     // Extract file path and line number from Yosys source attribute
 static extractFileInfoFromSource(sourceAttr) {
@@ -7003,6 +7153,111 @@ end`;
     }
 }
 
+async iverilogFileModeCompilation() {
+    this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+    this.terminalManager.appendToTerminal('tveri', '  FILE MODE: Verilog Verification (No Processors)');
+    this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+    statusUpdater.startCompilation('verilog');
+
+    try {
+        let projectPath = window.currentProjectPath;
+        
+        if (!projectPath) {
+            throw new Error('Project path not available');
+        }
+        
+        const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, 'fileOriented.json');
+        const configExists = await window.electronAPI.fileExists(fileModeConfigPath);
+        
+        if (!configExists) {
+            throw new Error('fileOriented.json not found. Please configure File Mode first.');
+        }
+        
+        this.terminalManager.appendToTerminal('tveri', 'Loading File Mode configuration...');
+        const configContent = await window.electronAPI.readFile(fileModeConfigPath);
+        const config = JSON.parse(configContent);
+        
+        if (!config.synthesizableFiles || config.synthesizableFiles.length === 0) {
+            throw new Error('No synthesizable files defined in File Mode configuration');
+        }
+        
+        this.terminalManager.appendToTerminal('tveri', `Found ${config.synthesizableFiles.length} Verilog file(s) to verify`);
+        
+        const topLevelFile = config.topLevelFile;
+        if (!topLevelFile) {
+            throw new Error('No top-level file specified. Please star a file in configuration.');
+        }
+        
+        const topLevelModule = topLevelFile.split(/[\\\/]/).pop().replace(/\.v$/i, '');
+        this.terminalManager.appendToTerminal('tveri', `Top-level module: ${topLevelModule}`);
+        
+        const tempBaseDir = await window.electronAPI.joinPath('saphoComponents', 'Temp');
+        const iveriCompPath = await window.electronAPI.joinPath(
+            'saphoComponents', 'Packages', 'iverilog', 'bin', 'iverilog.exe'
+        );
+        
+        // Ensure temp directory exists
+        await window.electronAPI.mkdir(tempBaseDir);
+        
+        const synthesizableFilePaths = config.synthesizableFiles.map(f => `"${f.path}"`).join(' ');
+        
+        await TabManager.saveAllFiles();
+        this.terminalManager.appendToTerminal('tveri', 'All open files saved');
+        
+        const projectName = projectPath.split(/[\/\\]/).pop();
+        const outputFilePath = await window.electronAPI.joinPath(tempBaseDir, `${projectName}_filemode.vvp`);
+        
+        const cmd = `cd "${tempBaseDir}" && "${iveriCompPath}" -s ${topLevelModule} -o "${outputFilePath}" ${synthesizableFilePaths}`;
+        
+        this.terminalManager.appendToTerminal('tveri', '───────────────────────────────────────────────────────────');
+        this.terminalManager.appendToTerminal('tveri', 'Executing Icarus Verilog...');
+        this.terminalManager.appendToTerminal('tveri', `Command: iverilog -s ${topLevelModule} ...`);
+        this.terminalManager.appendToTerminal('tveri', '───────────────────────────────────────────────────────────');
+        
+        const result = await window.electronAPI.execCommand(cmd);
+        
+        // Process output
+        if (result.stdout && result.stdout.trim()) {
+            this.terminalManager.appendToTerminal('tveri', result.stdout.trim(), 'stdout');
+        }
+        
+        if (result.stderr && result.stderr.trim()) {
+            // Filter out non-error messages
+            const lines = result.stderr.split('\n').filter(line => {
+                const trimmed = line.trim();
+                return trimmed && !trimmed.startsWith('//') && trimmed !== '';
+            });
+            
+            if (lines.length > 0) {
+                this.terminalManager.appendToTerminal('tveri', lines.join('\n'), 
+                    result.code === 0 ? 'warning' : 'error');
+            }
+        }
+        
+        if (result.code !== 0) {
+            this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+            this.terminalManager.appendToTerminal('tveri', '  VERIFICATION FAILED', 'error');
+            this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+            statusUpdater.compilationError('verilog', `Icarus Verilog failed with code ${result.code}`);
+            throw new Error('Icarus Verilog verification failed');
+        }
+        
+        this.terminalManager.appendToTerminal('tveri', '───────────────────────────────────────────────────────────');
+        this.terminalManager.appendToTerminal('tveri', `✓ Output file created: ${projectName}_filemode.vvp`);
+        this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+        this.terminalManager.appendToTerminal('tveri', '  VERIFICATION SUCCESSFUL', 'success');
+        this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+        
+        statusUpdater.compilationSuccess('verilog');
+        
+    } catch (error) {
+        this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+        this.terminalManager.appendToTerminal('tveri', `  ERROR: ${error.message}`, 'error');
+        this.terminalManager.appendToTerminal('tveri', '═══════════════════════════════════════════════════════════');
+        statusUpdater.compilationError('verilog', error.message);
+        throw error;
+    }
+}
 
    setupHierarchyToggle() {
     const toggleButton = document.getElementById('hierarchy-tree-toggle');
@@ -7148,7 +7403,7 @@ async generateHierarchyAfterCompilation(processor = null) {
             const outputFile = await window.electronAPI.joinPath(tempPath, `${cmmBaseName}.vvp`);
             const hardwareFile = await window.electronAPI.joinPath(hardwarePath, `${cmmBaseName}.v`);
 
-            const cmd = `"${iveriCompPath}" ${flags} -s ${tbModule} -o "${outputFile}" "${tbFile}" "${hardwareFile}" ${verilogFilesString}`;
+            const cmd = `"${iveriCompPath}" ${flags} -s ${cmmBaseName} -o "${outputFile}" "${tbFile}" "${hardwareFile}" ${verilogFilesString}`;
             this.terminalManager.appendToTerminal('tveri', `Executing: ${cmd}`);
 
             const result = await window.electronAPI.execCommand(cmd);
@@ -8048,13 +8303,25 @@ switchToHierarchicalView() {
             }
         }
     }
-
+    
     // Refactored compileAll method
-    async compileAll() {
-        try {
-            startCompilation();
-            await this.loadConfig();
-
+async compileAll() {
+    try {
+        startCompilation();
+        
+        // PRIORITY: Check for File Mode BEFORE loading normal config
+        const projectPath = window.currentProjectPath || this.projectPath;
+        const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, 'fileOriented.json');
+        const isFileMode = await window.electronAPI.fileExists(fileModeConfigPath);
+        
+        if (isFileMode) {
+            // File Mode: Only run iverilog verification
+            this.terminalManager.appendToTerminal('tveri', 'File Mode detected - running verification only');
+            switchTerminal('terminal-tveri');
+            await this.iverilogFileModeCompilation();
+            endCompilation();
+            return true;
+        }
             if (this.isProjectOriented) {
                 // Project mode: compile all processors, then run project verilog and GTKWave
                 if (this.projectConfig && this.projectConfig.processors) {
@@ -8147,6 +8414,86 @@ switchToHierarchicalView() {
     }
 
 }
+
+// Verilog Compilation Button
+document.getElementById('vericomp')?.addEventListener('click', async () => {
+    const isFileMode = await window.compilationModule?.isFileModeActive();
+    
+    if (isFileMode) {
+        // File Mode compilation
+        try {
+            startCompilation();
+            switchTerminal('terminal-tveri');
+            await window.compilationModule.iverilogFileModeCompilation();
+            endCompilation();
+        } catch (error) {
+            console.error('File Mode Verilog compilation failed:', error);
+            endCompilation();
+        }
+    } else {
+        // Normal mode - check configuration
+        try {
+            await window.compilationModule.loadConfig();
+            
+            if (window.compilationModule.isProjectOriented) {
+                if (!window.compilationModule.projectConfig) {
+                    showCardNotification('Please configure project first', 'warning', 3000);
+                    return;
+                }
+                await window.compilationModule.iverilogProjectCompilation();
+            } else {
+                const activeProcessor = window.compilationModule.config?.processors?.find(p => p.isActive);
+                if (!activeProcessor) {
+                    showCardNotification('Please configure a processor first', 'warning', 3000);
+                    return;
+                }
+                await window.compilationModule.iverilogCompilation(activeProcessor);
+            }
+        } catch (error) {
+            console.error('Verilog compilation failed:', error);
+        }
+    }
+});
+
+// Full Build Button
+document.getElementById('full-build')?.addEventListener('click', async () => {
+    const isFileMode = await window.compilationModule?.isFileModeActive();
+    
+    if (isFileMode) {
+        // File Mode: Only verify Verilog
+        try {
+            startCompilation();
+            switchTerminal('terminal-tveri');
+            await window.compilationModule.iverilogFileModeCompilation();
+            endCompilation();
+        } catch (error) {
+            console.error('File Mode verification failed:', error);
+            endCompilation();
+        }
+    } else {
+        // Normal mode: Full compilation pipeline
+        try {
+            await window.compilationModule.loadConfig();
+            
+            if (!window.compilationModule.isProjectOriented) {
+                const activeProcessor = window.compilationModule.config?.processors?.find(p => p.isActive);
+                if (!activeProcessor) {
+                    showCardNotification('Please configure a processor first before compilation', 'warning', 3000);
+                    return;
+                }
+            } else {
+                if (!window.compilationModule.projectConfig) {
+                    showCardNotification('Please configure project first', 'warning', 3000);
+                    return;
+                }
+            }
+            
+            await window.compilationModule.compileAll();
+        } catch (error) {
+            console.error('Full build failed:', error);
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, setting up PRISM button...');
@@ -8537,6 +8884,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('Hierarchical tree system initialized');
 });
+
 
 //TERMINAL      ======================================================================================================================================================== ƒ
 class TerminalManager {
@@ -10208,7 +10556,7 @@ document.getElementById('vericomp')
             console.error('No project opened');
             return;
         }
-
+/*
         if (!isProcessorConfigured()) {
             showCardNotification('Please configure a processor first before Verilog compilation.', 'warning', 4000);
             const toggleButton = document.getElementById('toggle-ui');
@@ -10224,7 +10572,7 @@ document.getElementById('vericomp')
             }
             return;
         }
-
+*/
 
         isCompilationRunning = true;
         compilationCanceled = false;

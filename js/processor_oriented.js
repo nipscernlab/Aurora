@@ -557,7 +557,7 @@ async function loadSimulationFiles(processorName) {
  }, 100);
 }
 
-// Update the processor selection change event to load simulation files
+
 processorSelect.addEventListener("change", function() {
   // Save current processor config to temp storage before switching
   saveCurrentProcessorToTemp();
@@ -566,86 +566,42 @@ processorSelect.addEventListener("change", function() {
   selectedProcessor = this.value;
   deleteProcessorButton.disabled = !selectedProcessor;
   
-  // Load simulation files for the selected processor
+  // Load simulation and CMM files for the selected processor
   loadSimulationFiles(selectedProcessor);
-  
-  // Load CMM files for the selected processor
   loadCmmFiles(selectedProcessor);
   
-  // Check if we have a temp config for this processor
-  if (selectedProcessor && tempProcessorConfigs[selectedProcessor]) {
-    const tempConfig = tempProcessorConfigs[selectedProcessor];
-    processorClkInput.value = tempConfig.clk || '';
-    processorNumClocksInput.value = tempConfig.numClocks || '';
-    showArraysCheckbox.checked = tempConfig.showArraysInGtkwave === 1;
+  // Find the most relevant configuration (temp > saved)
+  const tempConfig = tempProcessorConfigs[selectedProcessor];
+  const savedConfig = currentConfig.processors.find(p => p.name === selectedProcessor);
+  const effectiveConfig = tempConfig || savedConfig || {}; // Fallback to an empty object
 
-    // Set simulation file selections if available in temp config
-    if (tempConfig.testbenchFile && testbenchSelect) {
-      testbenchSelect.value = tempConfig.testbenchFile;
-    } else if (testbenchSelect) {
-      testbenchSelect.value = "standard";
-    }
-    
-    if (tempConfig.gtkwFile && gtkwSelect) {
-      gtkwSelect.value = tempConfig.gtkwFile;
-    } else if (gtkwSelect) {
-      gtkwSelect.value = "standard";
-    }
-    
-    // Set CMM file selection if available in temp config - CORRIGIDO
-    if (tempConfig.cmmFile && cmmFileSelect) {
-      cmmFileSelect.value = tempConfig.cmmFile;
-      selectedCmmFile = tempConfig.cmmFile;
-    } else if (cmmFileSelect) {
-      cmmFileSelect.value = "";
-      selectedCmmFile = null;
-    }
-    
-    console.log(`Loaded temp config for ${selectedProcessor}:`, tempConfig);
-    return;
+  // Improvement: Set default values for CLK and Num Clocks if not present in the config
+  // The '??' operator ensures that a value is applied only if it is null or undefined.
+  processorClkInput.value = effectiveConfig.clk ?? '100';
+  processorNumClocksInput.value = effectiveConfig.numClocks ?? '2000';
+  
+  // Populate other fields from the effective configuration
+  showArraysCheckbox.checked = effectiveConfig.showArraysInGtkwave === 1;
+
+  if (testbenchSelect) {
+    testbenchSelect.value = effectiveConfig.testbenchFile || 'standard';
+  }
+  if (gtkwSelect) {
+    gtkwSelect.value = effectiveConfig.gtkwFile || 'standard';
+  }
+  if (cmmFileSelect) {
+    cmmFileSelect.value = effectiveConfig.cmmFile || '';
+    selectedCmmFile = effectiveConfig.cmmFile || null;
   }
   
-  // Otherwise look for config in current loaded config
-  const processorConfig = currentConfig.processors.find(p => p.name === selectedProcessor);
-  
-  if (processorConfig) {
-    processorClkInput.value = processorConfig.clk || '';
-    processorNumClocksInput.value = processorConfig.numClocks || '';
-    showArraysCheckbox.checked = processorConfig.showArraysInGtkwave === 1; 
-
-    // Set simulation file selections if available in processor config
-    if (processorConfig.testbenchFile && testbenchSelect) {
-      testbenchSelect.value = processorConfig.testbenchFile;
-    } else if (testbenchSelect) {
-      testbenchSelect.value = "standard";
-    }
-    
-    if (processorConfig.gtkwFile && gtkwSelect) {
-      gtkwSelect.value = processorConfig.gtkwFile;
-    } else if (gtkwSelect) {
-      gtkwSelect.value = "standard";
-    }
-    
-    // Set CMM file selection if available in processor config - CORRIGIDO
-    if (processorConfig.cmmFile && cmmFileSelect) {
-      cmmFileSelect.value = processorConfig.cmmFile;
-      selectedCmmFile = processorConfig.cmmFile;
-    } else if (cmmFileSelect) {
-      cmmFileSelect.value = "";
-      selectedCmmFile = null;
-    }
+  if (tempConfig) {
+      console.log(`Loaded temp config for ${selectedProcessor}:`, tempConfig);
+  } else if (savedConfig) {
+      console.log(`Loaded saved config for ${selectedProcessor}:`, savedConfig);
   } else {
-    processorClkInput.value = '';
-    processorNumClocksInput.value = '';
-    showArraysCheckbox.checked = false;
-    if (testbenchSelect) testbenchSelect.value = "standard";
-    if (gtkwSelect) gtkwSelect.value = "standard";
-    if (cmmFileSelect) { // CORRIGIDO
-      cmmFileSelect.value = "";
-      selectedCmmFile = null;
-    }
+      console.log(`Setting default config for new processor: ${selectedProcessor}`);
   }
-  
+
   // Handle testbench visibility after processor change
   setTimeout(() => {
     if (testbenchSelect) {
@@ -904,6 +860,15 @@ settingsButton.addEventListener("click", async () => {
     
     await loadAvailableProcessors();
     await loadConfiguration();
+
+    if (availableProcessors && availableProcessors.length === 1) {
+      const singleProcessor = availableProcessors[0];
+      if (processorSelect.value !== singleProcessor) {
+        processorSelect.value = singleProcessor;
+        // Dispatch a 'change' event to trigger loading the processor's configuration.
+        processorSelect.dispatchEvent(new Event('change', { 'bubbles': true }));
+      }
+    }
     
     // After loading configuration, if there's a selected processor, load its simulation files
     if (selectedProcessor) {

@@ -79,6 +79,7 @@
         </button>
     </div>
 </div>
+
 <!-- Processor Configuration Modal -->
 <div id="modalProcessorConfig" class="modal-overlay" aria-hidden="true">
     <div class="modal-container" role="dialog" aria-labelledby="processor-modal-title" aria-modal="true">
@@ -209,6 +210,21 @@
         
         <main class="modal-body">
             <!-- Synthesis Configuration Section -->
+
+            <!-- File Mode Toggle (Add this BEFORE Synthesizable Files section) -->
+        <div class="file-mode-container" id="fileModeContainer">
+        <label class="file-mode-switch">
+            <input type="checkbox" id="fileModeToggle">
+            <span class="file-mode-slider"></span>
+        </label>
+        <label for="fileModeToggle" class="file-mode-label">
+             File Mode
+            <span style="font-size: var(--text-sm); color: var(--text-secondary); margin-left: var(--space-2);">
+            (Simplified Verilog verification only) <i class="fa-solid fa-crow"></i>
+            </span>
+        </label>
+        </div>
+
             <section class="config-section">
                 <h3 class="section-title">
                     <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
@@ -244,7 +260,7 @@
                     </div>
                 </div>
             </section>
-            
+            <div id="testbenchSection">
             <!-- Simulation Configuration Section -->
             <section class="config-section">
                 <h3 class="section-title">
@@ -280,7 +296,8 @@
                         </div>
                     </div>
                 </div>
-
+            </div>
+            <div id="processorsSection">
                     <!-- Processors Management -->
                 <div class="form-group">
                     <label class="form-label">
@@ -297,14 +314,15 @@
                         <span>Add Processor</span>
                     </button>
                 </div>
-                
+              </div>
+              <div id="simulationSection"> 
                 <!-- Simulation Settings -->
                 <div class="form-group">
                     <label for="projectSimuDelay" class="form-label">Simulation Time</label>
                     <input type="text" id="projectSimuDelay" class="form-input" name="simuDelay" placeholder="e.g., 200000" value="200000">
                     <small class="form-hint">Simulation time value used in testbench timing</small>
                 </div>
-                
+              </div>   
                 <div class="form-group">
                     <div class="checkbox-group">
                         <input type="checkbox" id="showArraysInGtkwave-project" class="form-checkbox">
@@ -517,9 +535,9 @@
                 <span class="toggle-text">Hierarchical</span>
             </button>
             
-            <span id="refresh-button" style="cursor: pointer;">
-                <i class="fa-solid fa-arrows-rotate"></i>
-            </span>
+                <span id="refresh-button" style="cursor: pointer;">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </span>
                 <span id="open-hdl-button" style="cursor: pointer;">
                     <i class="fa-solid fa-hashtag"></i>
                 </span>
@@ -647,34 +665,50 @@
     </div>
         <div class="terminal-content" id="terminal-tcmm">
             <div class="terminal-header">TCMM Terminal</div>
-            <div class="terminal-body">
-<span style="color: #f8fafc;">Bem-vindo ao Terminal TCMM!</span><br>
-<span style="color: #f8fafc;">Para criar um projeto de Processador, clique em</span> <span class="keyword" onclick="activateButton('newProjectBtn')">Novo Projeto</span>. <span style="color: #f8fafc;">Dê um nome ao seu projeto e selecione o local de instalação. Em seguida, o projeto .spf será aberto automaticamente e o botão</span> <span class="keyword" onclick="activateButton('processorHub')">Processor Hub</span> <span style="color: #f8fafc;">será habilitado. Se você já tem um projeto criado, clique em</span> <span class="keyword" onclick="activateButton('openProjectBtn')">Abrir Projeto</span><br>
-                
-<span style="color: #f8fafc;">Clique em</span> <span class="keyword" onclick="activateButton('processorHub')">Processor Hub</span><span style="color: #f8fafc;">para criar um processador com todos os parâmetros pré-definidos por você. Programe seu processador usando a linguagem C± no arquivo .cmm dentro da pasta Software do seu projeto. Ao modificar um arquivo, clique em</span><span style="color: #f8fafc;">para salvá-lo</span><br>
-                
-<span style="color: #f8fafc;">Em seguida, configure a compilação no botão</span> <span class="keyword" onclick="activateButton('settings')">Processor Config</span><span style="color: #f8fafc;">, configurando o processador a ser compilado, o número de clocks e ciclos (frequência) para simulação, bem como as flags de compilação para cmmcomp, asmcomp e iverilog</span><br>
-                
-<span style="color: #f8fafc;">Após a configuração, você pode compilar passo a passo ou usar o botão</span> <span class="keyword" onclick="activateButton('allcomp')">Full Build</span> <span style="color: #f8fafc;">para compilar todo o projeto e visualizar a simulação no gtkwave. Monitore o log do processo nos terminais</span><span class="terminal-keyword" onclick="activateTerminal('tcmm')">TCMM</span>, <span class="terminal-keyword" onclick="activateTerminal('tasm')">TASM</span>, <span class="terminal-keyword" onclick="activateTerminal('tveri')">TIVERI</span>, <span class="terminal-keyword" onclick="activateTerminal('twave')">TWAVE</span> 
-<span style="color: #f8fafc;">Limpe cada terminal individualmente com o botão</span> <span class="keyword" onclick="activateButton('clear-terminal')">Limpar Terminal</span>
-            
-<span style="color: #f8fafc;">A assistência de IA pode ser útil. Clique no botão</span> <span class="keyword" onclick="activateButton('aiButton')">Assistente de IA</span> <span style="color: #f8fafc;">para ativá-lo. Selecione um dos modelos: ChatGPT, Claude ou DeepSeek. Verifique a hierarquia do seu projeto em</span> <span class="keyword" onclick="activateButton('open-folder-button')">Abrir Pasta</span><br>
-                
-<span style="color: #f8fafc;">Deseja visualizar informações sobre o projeto atual? Clique em</span> <span class="keyword" onclick="activateButton('projectInfo')">Informações do Projeto</span>
-<span style="color: #f8fafc;">Há mais em</span> <span class="keyword" onclick="activateButton('sidebarMenu'); toggleSidebar()">Menu</span>
-            </div>
+<div class="terminal-body" style="background:#1a192b;padding:16px;border-radius:8px;font-family: 'Courier New', Courier, monospace;line-height:1.5;">
+  <style>
+    :root{
+      --text: #e6eef8;
+      --muted: #a9b3c2;
+      --accent: #ffd166;
+      --keyword-bg: rgba(255,209,102,0.08);
+    }
+    .terminal-body { color: var(--text); }
+    .muted { color: var(--muted); }
+    .keyword {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline dotted;
+      border-radius: 6px;
+      background: var(--keyword-bg);
+    }
+    .terminal-keyword {
+      color: var(--accent);
+      font-weight:700;
+      cursor:pointer;
+    }
+    .strong { color: var(--text); font-weight:600; }
+  </style><span class="strong">Welcome to the TCMM Terminal!</span><br>
+  <span class="muted">To create a new Processor project, click</span> <span class="keyword" onclick="activateButton('newProjectBtn')">New Project</span>. <span class="muted">Give your project a name and choose an installation location. The</span> <span class="keyword" onclick="activateButton('processorHub')">Processor Hub</span> <span class="muted">button will be enabled and the .spf project will open automatically. If you already have a project, click</span> <span class="keyword" onclick="activateButton('openProjectBtn')">Open Project</span>.<br>
+  <span class="muted">Click</span> <span class="keyword" onclick="activateButton('processorHub')">Processor Hub</span> <span class="muted">to create a processor using your predefined parameters. Develop your processor software in C± inside the .cmm file located in your project’s <em>Software</em> folder. When you modify a file, remember to save it to persist changes.</span><br>
+  <span class="muted">Next, configure the build settings in</span> <span class="keyword" onclick="activateButton('settings')">Processor Config</span> <span class="muted">— select which processor to compile, set clock cycles and simulation frequency.</span><br>
+  <span class="muted">When ready, run a step-by-step build or use</span> <span class="keyword" onclick="activateButton('allcomp')">Full Build</span> <span class="muted">to compile everything and open the waveform in GTKWave. Watch the build logs live in the terminals:</span> <span class="terminal-keyword" onclick="activateTerminal('tcmm')">TCMM</span>, <span class="terminal-keyword" onclick="activateTerminal('tasm')">TASM</span>, <span class="terminal-keyword" onclick="activateTerminal('tveri')">TIVERI</span>, <span class="terminal-keyword" onclick="activateTerminal('twave')">TWAVE</span>. <span class="muted">Clear any terminal using</span> <span class="keyword" onclick="activateButton('clear-terminal')">Clear Terminal</span>.<br>
+  <span class="muted">Need help? The AI Assistant can speed things up. Click</span> <span class="keyword" onclick="activateButton('aiButton')">AI Assistant</span> <span class="muted">and choose a model: ChatGPT, Claude, or DeepSeek. Inspect your project structure with</span> <span class="keyword" onclick="activateButton('open-folder-button')">Open Folder</span>.<br>
+  <span class="muted">Want a quick project summary?</span> <span class="keyword" onclick="activateButton('projectInfo')">Project Info</span> <span class="muted">or explore more options in</span> <span class="keyword" onclick="activateButton('sidebarMenu'); toggleSidebar()">Menu</span>.
+</div>
+
         </div>
         <div class="terminal-content hidden" id="terminal-tasm">
             <div class="terminal-header">TASM Terminal</div>
-            <div class="terminal-body">Bem-vindo ao Terminal TASM!</div>
+            <div class="terminal-body">Welcome to the TASM Terminal!</div>
         </div>
         <div class="terminal-content hidden" id="terminal-tveri">
             <div class="terminal-header">TVERI Terminal</div>
-            <div class="terminal-body">Bem-vindo ao Terminal TVERI!</div>
+            <div class="terminal-body">Welcome to the TIVERI Terminal!</div>
         </div>
         <div class="terminal-content hidden" id="terminal-twave">
             <div class="terminal-header">TWAVE Terminal</div>
-            <div class="terminal-body">Bem-vindo ao Terminal TWAVE!</div>
+            <div class="terminal-body">Welcome to the TWAVE Terminal!</div>
         </div>
     </div>
 

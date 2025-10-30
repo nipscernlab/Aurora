@@ -1,7 +1,6 @@
 /**
  * =====================================================================================
- * Aurora IDE - Project Oriented Configuration System
- * Enhanced, simplified, and robust implementation
+ * Aurora IDE - Project Oriented Configuration System (Enhanced with File Mode)
  * =====================================================================================
  */
 
@@ -9,7 +8,11 @@ class ProjectOrientedManager {
   constructor() {
     // Core configuration
     this.CONFIG_FILENAME = 'projectOriented.json';
+    this.FILE_MODE_CONFIG_FILENAME = 'fileOriented.json';
     this.ICON_TRANSITION_DURATION = 300;
+    
+    // File Mode state
+    this.isFileMode = false;
     
     // State management
     this.currentConfig = {
@@ -20,6 +23,12 @@ class ProjectOrientedManager {
       iverilogFlags: '',
       simuDelay: '200000',
       showArraysInGtkwave: 0
+    };
+    
+    // File mode configuration
+    this.fileModeConfig = {
+      topLevelFile: '',
+      synthesizableFiles: []
     };
     
     // File storage
@@ -39,26 +48,20 @@ class ProjectOrientedManager {
     this.init();
   }
   
-  /**
-   * Initialize the entire system
-   */
   async init() {
-      try {
-        this.cacheElements();
-        this.setupEventListeners();
-        this.enhanceDropZones();
-        await this.loadAvailableProcessors();
-        this.updateCompilationModeStatus(); // <-- ADD THIS LINE
-        console.log('Project Oriented Configuration System initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize Project Oriented System:', error);
-        this.showNotification('Failed to initialize configuration system', 'error', 4000);
-      }
+    try {
+      this.cacheElements();
+      this.setupEventListeners();
+      this.enhanceDropZones();
+      await this.loadAvailableProcessors();
+      this.updateCompilationModeStatus();
+      console.log('Project Oriented Configuration System initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Project Oriented System:', error);
+      this.showNotification('Failed to initialize configuration system', 'error', 4000);
+    }
   }
     
-  /**
-   * Cache all DOM elements for better performance
-   */
   cacheElements() {
     this.elements = {
       // Modal elements
@@ -66,6 +69,10 @@ class ProjectOrientedManager {
       closeBtn: document.getElementById('closeProjectModal'),
       cancelBtn: document.getElementById('cancelProjectConfig'),
       saveBtn: document.getElementById('saveProjectConfig'),
+      
+      // File Mode elements
+      fileModeToggle: document.getElementById('fileModeToggle'),
+      fileModeContainer: document.getElementById('fileModeContainer'),
       
       // File management
       synthesizableDropArea: document.getElementById('synthesizableDropArea'),
@@ -88,6 +95,11 @@ class ProjectOrientedManager {
       projectSimuDelay: document.getElementById('projectSimuDelay'),
       showArraysCheckbox: document.getElementById('showArraysInGtkwave-project'),
       
+      // Containers to hide in File Mode
+      testbenchSection: document.getElementById('testbenchSection'),
+      processorsSection: document.getElementById('processorsSection'),
+      simulationSection: document.getElementById('simulationSection'),
+      
       // UI elements
       toggleButton: document.getElementById('toggle-ui'),
       settingsButton: document.getElementById('settings'),
@@ -96,9 +108,6 @@ class ProjectOrientedManager {
     };
   }
   
-  /**
-   * Setup all event listeners
-   */
   setupEventListeners() {
     // Modal controls
     this.elements.closeBtn?.addEventListener('click', () => this.closeModal());
@@ -106,9 +115,13 @@ class ProjectOrientedManager {
     this.elements.saveBtn?.addEventListener('click', () => this.saveConfiguration());
     
     this.elements.toggleButton?.addEventListener('click', () => {
-        setTimeout(() => this.updateCompilationModeStatus(), 50);
+      setTimeout(() => this.updateCompilationModeStatus(), 50);
     });
 
+    // File Mode toggle
+    this.elements.fileModeToggle?.addEventListener('change', (e) => {
+      this.toggleFileMode(e.target.checked);
+    });
 
     // Import buttons
     this.elements.importSynthesizableBtn?.addEventListener('click', () => this.handleImportClick('synthesizable'));
@@ -139,37 +152,61 @@ class ProjectOrientedManager {
     this.setupDragAndDrop();
   }
   
+  toggleFileMode(enabled) {
+    this.isFileMode = enabled;
+    
+    // Hide/show sections based on File Mode
+    const sectionsToToggle = [
+      this.elements.testbenchSection,
+      this.elements.processorsSection,
+      this.elements.simulationSection
+    ];
+    
+    sectionsToToggle.forEach(section => {
+      if (section) {
+        section.style.display = enabled ? 'none' : 'block';
+      }
+    });
+    
+    // Update UI feedback
+    const fileModeLabel = this.elements.fileModeContainer?.querySelector('label');
+    if (fileModeLabel) {
+      fileModeLabel.style.color = enabled ? 'var(--accent-primary)' : '';
+      fileModeLabel.style.fontWeight = enabled ? 'var(--font-semibold)' : '';
+    }
+    
+    this.showNotification(
+      enabled ? 'File Mode enabled - simplified configuration' : 'Full project mode enabled',
+      'info',
+      2000
+    );
+  }
+  
   updateCompilationModeStatus() {
     if (!this.elements.toggleButton || !this.elements.statusText) {
-        console.warn('UI toggle button or status text element not found.');
-        return;
+      console.warn('UI toggle button or status text element not found.');
+      return;
     }
 
     const statusElement = this.elements.statusText;
     const isProjectMode = this.elements.toggleButton.classList.contains('active');
 
     const newHTML = isProjectMode
-        ? '<i class="fa-solid fa-lock"></i> Project Oriented'
-        : '<i class="fa-solid fa-lock-open"></i> Processor Oriented';
+      ? '<i class="fa-solid fa-lock"></i> Project Oriented'
+      : '<i class="fa-solid fa-lock-open"></i> Processor Oriented';
 
-    // Para evitar um piscar desnecessário se o conteúdo já estiver correto
     if (statusElement.innerHTML.trim() === newHTML.trim()) {
-        return;
+      return;
     }
 
-    // 1. Inicia o fade-out
     statusElement.style.opacity = '0';
 
-    // 2. Aguarda o término do fade-out, troca o conteúdo e inicia o fade-in
     setTimeout(() => {
-        statusElement.innerHTML = newHTML;
-        statusElement.style.opacity = '1';
-    }, 300); // Esta duração (300ms) deve corresponder à transição do CSS (0.3s)
-}
+      statusElement.innerHTML = newHTML;
+      statusElement.style.opacity = '1';
+    }, 300);
+  }
 
-  /**
-   * Enhanced drag and drop setup with visual feedback
-   */
   setupDragAndDrop() {
     const dropAreas = [
       { element: this.elements.synthesizableDropArea, type: 'synthesizable' },
@@ -179,32 +216,92 @@ class ProjectOrientedManager {
     dropAreas.forEach(({ element, type }) => {
       if (!element) return;
       
-      // Prevent default drag behaviors
       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         element.addEventListener(eventName, this.preventDefaults, false);
       });
       
-      // Add highlight on drag over
       ['dragenter', 'dragover'].forEach(eventName => {
         element.addEventListener(eventName, () => this.highlightDropZone(element), false);
       });
       
-      // Remove highlight on drag leave/drop
       ['dragleave', 'drop'].forEach(eventName => {
         element.addEventListener(eventName, () => this.unhighlightDropZone(element), false);
       });
       
-      // Handle drop
       element.addEventListener('drop', (e) => this.handleDrop(e, type), false);
     });
   }
   
-  /**
-   * Enhance drop zones with better visual indicators
-   */
   enhanceDropZones() {
     const style = document.createElement('style');
     style.textContent = `
+      .file-mode-container {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-6);
+      }
+      
+      .file-mode-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+      }
+      
+      .file-mode-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      
+      .file-mode-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--bg-quaternary);
+        transition: 0.3s;
+        border-radius: 24px;
+        border: 1px solid var(--border-primary);
+      }
+      
+      .file-mode-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: var(--text-secondary);
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+      
+      input:checked + .file-mode-slider {
+        background-color: var(--accent-primary);
+        border-color: var(--accent-primary);
+      }
+      
+      input:checked + .file-mode-slider:before {
+        transform: translateX(24px);
+        background-color: white;
+      }
+      
+      .file-mode-label {
+        font-size: var(--text-base);
+        font-weight: var(--font-medium);
+        color: var(--text-primary);
+        cursor: pointer;
+        user-select: none;
+      }
+      
       .file-drop-area {
         position: relative;
         transition: all var(--transition-normal);
@@ -213,18 +310,6 @@ class ProjectOrientedManager {
       .file-drop-area.dragover {
         transform: scale(1.02);
         box-shadow: 0 0 0 3px var(--accent-primary), var(--shadow-lg);
-      }
-      
-      .file-drop-area.dragover .drop-zone {
-        background: var(--accent-subtle-bg);
-        border-color: var(--accent-primary);
-        border-width: 2px;
-      }
-      
-      .file-drop-area.dragover .drop-icon {
-        transform: scale(1.3) translateY(-5px);
-        color: var(--accent-primary);
-        animation: bounce 0.6s infinite;
       }
       
       .drop-zone {
@@ -240,37 +325,6 @@ class ProjectOrientedManager {
       .drop-zone:hover {
         border-color: var(--accent-secondary);
         background: var(--bg-quaternary);
-      }
-      
-      .drop-zone-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--space-4);
-      }
-      
-      .drop-icon {
-        font-size: 3rem;
-        color: var(--accent-secondary);
-        transition: all var(--transition-normal);
-      }
-      
-      .drop-zone h4 {
-        margin: 0;
-        font-size: var(--text-xl);
-        font-weight: var(--font-semibold);
-        color: var(--text-primary);
-      }
-      
-      .drop-zone p {
-        margin: 0;
-        font-size: var(--text-sm);
-        color: var(--text-secondary);
-      }
-      
-      @keyframes bounce {
-        0%, 100% { transform: scale(1.3) translateY(-5px); }
-        50% { transform: scale(1.3) translateY(-15px); }
       }
       
       .file-list {
@@ -307,45 +361,11 @@ class ProjectOrientedManager {
         border-color: var(--accent-primary);
       }
       
-      .project-file-item.file-animate-out {
-        animation: slideOut var(--transition-normal) forwards;
-      }
-      
       @keyframes slideIn {
         to {
           opacity: 1;
           transform: translateX(0);
         }
-      }
-      
-      @keyframes slideOut {
-        to {
-          opacity: 0;
-          transform: translateX(-20px);
-          margin-top: calc(-1 * (var(--space-3) * 2 + var(--space-2) + 1.5rem));
-        }
-      }
-      
-      .project-file-info {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        flex: 1;
-        min-width: 0;
-      }
-      
-      .project-file-name {
-        font-size: var(--text-sm);
-        font-weight: var(--font-medium);
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      
-      .project-file-actions {
-        display: flex;
-        gap: var(--space-2);
       }
       
       .project-icon-btn {
@@ -362,219 +382,88 @@ class ProjectOrientedManager {
         transition: all var(--transition-fast);
       }
       
-      .project-icon-btn:hover {
-        background: var(--overlay-hover);
-        color: var(--text-primary);
-      }
-      
       .project-icon-btn.star-btn.starred {
         color: var(--accent-primary);
-      }
-      
-      .project-icon-btn.star-btn.starred:hover {
-        color: var(--accent-hover);
       }
       
       .project-icon-btn.delete-btn:hover {
         background: var(--status-error-bg);
         color: var(--status-error);
       }
-      
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-8);
-        text-align: center;
-        color: var(--text-tertiary);
-        gap: var(--space-3);
-      }
-      
-      .empty-icon {
-        font-size: 2.5rem;
-        opacity: 0.5;
-      }
-      
-      .processors-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-3);
-        margin-bottom: var(--space-4);
-      }
-      
-      .modalConfig-processor-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr auto;
-        gap: var(--space-3);
-        align-items: end;
-      }
-      
-      .modalConfig-select-container {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-      }
-      
-      .modalConfig-select-container label {
-        font-size: var(--text-sm);
-        font-weight: var(--font-medium);
-        color: var(--text-secondary);
-      }
-      
-      .modalConfig-select {
-        width: 100%;
-        padding: var(--space-3);
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-md);
-        color: var(--text-primary);
-        font-size: var(--text-sm);
-        transition: all var(--transition-fast);
-      }
-      
-      .modalConfig-select:hover {
-        border-color: var(--accent-secondary);
-      }
-      
-      .modalConfig-select:focus {
-        outline: none;
-        border-color: var(--accent-primary);
-        box-shadow: var(--shadow-focus-outline);
-      }
-      
-      .modalConfig-select:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      
-      .delete-processor {
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-md);
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: all var(--transition-fast);
-      }
-      
-      .delete-processor:hover {
-        background: var(--status-error-bg);
-        border-color: var(--status-error);
-        color: var(--status-error);
-      }
 
       #processorProjectOriented {
         transition: opacity 0.3s ease-in-out;
       }
-
     `;
     document.head.appendChild(style);
   }
   
-  /**
-   * Prevent default drag behaviors
-   */
   preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
   }
   
-  /**
-   * Highlight drop zone with enhanced visuals
-   */
   highlightDropZone(dropArea) {
     dropArea.classList.add('dragover');
   }
   
-  /**
-   * Remove highlight from drop zone
-   */
   unhighlightDropZone(dropArea) {
     dropArea.classList.remove('dragover');
   }
   
-  /**
-   * Handle file drop with path preservation - ENHANCED FOR WINDOWS
-   */
-  /**
- * Handle file drop with PROPER path capture for Electron
- */
-/**
- * Handle file drop - SIMPLIFIED VERSION
- */
-async handleDrop(e, type) {
-  const droppedFiles = e.dataTransfer.files;
-  
-  if (!droppedFiles || droppedFiles.length === 0) {
-    this.showNotification('No files dropped', 'warning', 2000);
-    return;
-  }
-  
-  const filesWithPath = [];
-  
-  for (let i = 0; i < droppedFiles.length; i++) {
-    const file = droppedFiles[i];
+  async handleDrop(e, type) {
+    const droppedFiles = e.dataTransfer.files;
     
-    // Get file path using Electron's webUtils (works in dev and production)
-    let filePath = window.electronAPI.getPathForFile(file);
-    
-    if (!filePath || filePath === '') {
-      console.warn('Cannot get path for file:', file.name);
-      this.showNotification(
-        `Cannot get path for "${file.name}". Try using Browse Files button.`, 
-        'warning', 
-        3000
-      );
-      continue;
+    if (!droppedFiles || droppedFiles.length === 0) {
+      this.showNotification('No files dropped', 'warning', 2000);
+      return;
     }
     
-    // Normalize path for Windows
-    filePath = filePath.replace(/\//g, '\\');
+    const filesWithPath = [];
     
-    // Verify file exists
-    try {
-      const exists = await window.electronAPI.fileExists(filePath);
+    for (let i = 0; i < droppedFiles.length; i++) {
+      const file = droppedFiles[i];
+      let filePath = window.electronAPI.getPathForFile(file);
       
-      if (!exists) {
+      if (!filePath || filePath === '') {
         this.showNotification(
-          `File does not exist: ${filePath}`, 
+          `Cannot get path for "${file.name}". Try using Browse Files button.`, 
           'warning', 
           3000
         );
         continue;
       }
       
-      filesWithPath.push({
-        name: file.name,
-        path: filePath,
-        type: file.type || this.getMimeTypeFromExtension(file.name),
-        starred: false
-      });
+      filePath = filePath.replace(/\//g, '\\');
       
-    } catch (error) {
-      console.error(`Error validating file:`, error);
-      this.showNotification(
-        `Error validating "${file.name}"`, 
-        'error', 
-        3000
-      );
+      try {
+        const exists = await window.electronAPI.fileExists(filePath);
+        
+        if (!exists) {
+          this.showNotification(`File does not exist: ${filePath}`, 'warning', 3000);
+          continue;
+        }
+        
+        filesWithPath.push({
+          name: file.name,
+          path: filePath,
+          type: file.type || this.getMimeTypeFromExtension(file.name),
+          starred: false
+        });
+        
+      } catch (error) {
+        console.error(`Error validating file:`, error);
+        this.showNotification(`Error validating "${file.name}"`, 'error', 3000);
+      }
+    }
+    
+    if (filesWithPath.length > 0) {
+      await this.importFiles(filesWithPath, type);
+    } else {
+      this.showNotification('No files could be imported. Use Browse Files button.', 'warning', 3000);
     }
   }
-  
-  if (filesWithPath.length > 0) {
-    await this.importFiles(filesWithPath, type);
-  } else {
-    this.showNotification('No files could be imported. Use Browse Files button.', 'warning', 3000);
-  }
-}
-  /**
-   * Handle import button click
-   */
+
   async handleImportClick(type) {
     try {
       const filters = type === 'synthesizable' 
@@ -602,95 +491,81 @@ async handleDrop(e, type) {
     }
   }
   
-  /**
-   * Import files with validation
-   */
- /**
- * Import files with validation (without size property)
- */
-async importFiles(files, type) {
-  const validFiles = [];
-  const errors = [];
-  
-  for (let file of files) {
-    // Validate path
-    if (!file.path || file.path === '') {
-      errors.push(`"${file.name}" has no path information`);
-      continue;
-    }
+  async importFiles(files, type) {
+    const validFiles = [];
+    const errors = [];
     
-    // Validate extension
-    const ext = file.name.toLowerCase().split('.').pop();
-    const allowedExtensions = type === 'synthesizable' 
-      ? ['v', 'sv', 'vh'] 
-      : ['v', 'sv', 'gtkw'];
-    
-    if (!allowedExtensions.includes(ext)) {
-      errors.push(`"${file.name}" has unsupported extension .${ext}`);
-      continue;
-    }
-    
-    // Check for duplicates
-    const existingFiles = type === 'synthesizable' ? this.synthesizableFiles : 
-                          ext === 'gtkw' ? this.gtkwFiles : this.testbenchFiles;
-    
-    if (existingFiles.some(f => f.path === file.path)) {
-      errors.push(`"${file.name}" already exists in the project`);
-      continue;
-    }
-    
-    // Add file WITHOUT size property
-    validFiles.push({
-      name: file.name,
-      path: file.path,
-      type: file.type || this.getMimeTypeFromExtension(file.name),
-      starred: false
-    });
-  }
-  
-  // Show errors
-  if (errors.length > 0) {
-    errors.forEach(error => {
-      this.showNotification(error, 'warning', 2500);
-    });
-  }
-  
-  if (validFiles.length === 0) {
-    if (errors.length === 0) {
-      this.showNotification('No valid files to import', 'warning', 3000);
-    }
-    return;
-  }
-  
-  // Add files to appropriate lists
-  if (type === 'synthesizable') {
-    this.synthesizableFiles.push(...validFiles);
-    this.updateFileList('synthesizable');
-    
-    // Re-parse for processor instances
-    await this.parseAllSynthesizableFiles();
-    this.refreshAllInstanceSelects();
-  } else {
-    validFiles.forEach(file => {
-      if (file.name.toLowerCase().endsWith('.gtkw')) {
-        this.gtkwFiles.push(file);
-      } else {
-        this.testbenchFiles.push(file);
+    for (let file of files) {
+      if (!file.path || file.path === '') {
+        errors.push(`"${file.name}" has no path information`);
+        continue;
       }
-    });
-    this.updateFileList('testbench');
+      
+      const ext = file.name.toLowerCase().split('.').pop();
+      const allowedExtensions = type === 'synthesizable' 
+        ? ['v', 'sv', 'vh'] 
+        : ['v', 'sv', 'gtkw'];
+      
+      if (!allowedExtensions.includes(ext)) {
+        errors.push(`"${file.name}" has unsupported extension .${ext}`);
+        continue;
+      }
+      
+      const existingFiles = type === 'synthesizable' ? this.synthesizableFiles : 
+                            ext === 'gtkw' ? this.gtkwFiles : this.testbenchFiles;
+      
+      if (existingFiles.some(f => f.path === file.path)) {
+        errors.push(`"${file.name}" already exists in the project`);
+        continue;
+      }
+      
+      validFiles.push({
+        name: file.name,
+        path: file.path,
+        type: file.type || this.getMimeTypeFromExtension(file.name),
+        starred: false
+      });
+    }
+    
+    if (errors.length > 0) {
+      errors.forEach(error => {
+        this.showNotification(error, 'warning', 2500);
+      });
+    }
+    
+    if (validFiles.length === 0) {
+      if (errors.length === 0) {
+        this.showNotification('No valid files to import', 'warning', 3000);
+      }
+      return;
+    }
+    
+    if (type === 'synthesizable') {
+      this.synthesizableFiles.push(...validFiles);
+      this.updateFileList('synthesizable');
+      
+      if (!this.isFileMode) {
+        await this.parseAllSynthesizableFiles();
+        this.refreshAllInstanceSelects();
+      }
+    } else {
+      validFiles.forEach(file => {
+        if (file.name.toLowerCase().endsWith('.gtkw')) {
+          this.gtkwFiles.push(file);
+        } else {
+          this.testbenchFiles.push(file);
+        }
+      });
+      this.updateFileList('testbench');
+    }
+    
+    this.showNotification(
+      `Successfully added ${validFiles.length} file(s)`, 
+      'success', 
+      3000
+    );
   }
   
-  this.showNotification(
-    `Successfully added ${validFiles.length} file(s)`, 
-    'success', 
-    3000
-  );
-}
-  
-  /**
-   * Get MIME type from file extension
-   */
   getMimeTypeFromExtension(fileName) {
     const ext = fileName.toLowerCase().split('.').pop();
     const mimeTypes = {
@@ -703,9 +578,6 @@ async importFiles(files, type) {
     return mimeTypes[ext] || 'application/octet-stream';
   }
   
-  /**
-   * Update file list display
-   */
   updateFileList(type) {
     const fileList = type === 'synthesizable' ? this.elements.synthesizableFileList : this.elements.testbenchFileList;
     const emptyState = type === 'synthesizable' ? this.elements.synthesizableEmptyState : this.elements.testbenchEmptyState;
@@ -752,9 +624,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Get sorted files (starred first, then alphabetically)
-   */
   getSortedFiles(files) {
     return [...files].sort((a, b) => {
       if (a.starred && !b.starred) return -1;
@@ -763,9 +632,6 @@ async importFiles(files, type) {
     });
   }
   
-  /**
-   * Create file item element
-   */
   createFileItem(file, index, type) {
     const fileItem = document.createElement('div');
     fileItem.className = `project-file-item ${file.starred ? 'starred' : ''}`;
@@ -784,7 +650,7 @@ async importFiles(files, type) {
         <button class="project-icon-btn star-btn ${isStarred ? 'starred' : ''}" 
                 data-index="${index}" 
                 data-type="${type}"
-                title="${isStarred ? 'Remove star' : 'Set as main file'}">
+                title="${isStarred ? 'Remove star' : 'Set as top-level file'}">
           <i class="fa-solid fa-star-of-life"></i>
         </button>
         <button class="project-icon-btn delete-btn" 
@@ -814,9 +680,6 @@ async importFiles(files, type) {
     return fileItem;
   }
   
-  /**
-   * Toggle file star status (only one starred per type)
-   */
   toggleFileStar(index, type) {
     let files, targetFile;
     
@@ -833,7 +696,6 @@ async importFiles(files, type) {
     
     if (!targetFile) return;
     
-    // If starring a file, unstar all others of the same type
     if (!targetFile.starred) {
       files.forEach(file => {
         if (file !== targetFile) {
@@ -842,22 +704,17 @@ async importFiles(files, type) {
       });
     }
     
-    // Toggle starred status
     targetFile.starred = !targetFile.starred;
     
-    // Update UI
     setTimeout(() => {
       this.updateFileList('synthesizable');
       this.updateFileList('testbench');
     }, 100);
     
-    const action = targetFile.starred ? 'selected as main file' : 'deselected';
+    const action = targetFile.starred ? 'selected as top-level file' : 'deselected';
     this.showNotification(`File "${targetFile.name}" ${action}`, 'success', 2000);
   }
   
-  /**
-   * Remove file from list
-   */
   removeFile(index, type) {
     let files, isSynthesizable = false;
     
@@ -881,7 +738,7 @@ async importFiles(files, type) {
         files.splice(index, 1);
         this.updateFileList(type === 'gtkw' ? 'testbench' : type);
         
-        if (isSynthesizable) {
+        if (isSynthesizable && !this.isFileMode) {
           this.parseAllSynthesizableFiles().then(() => {
             this.refreshAllInstanceSelects();
           });
@@ -891,7 +748,7 @@ async importFiles(files, type) {
       files.splice(index, 1);
       this.updateFileList(type === 'gtkw' ? 'testbench' : type);
       
-      if (isSynthesizable) {
+      if (isSynthesizable && !this.isFileMode) {
         this.parseAllSynthesizableFiles().then(() => {
           this.refreshAllInstanceSelects();
         });
@@ -899,9 +756,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Parse all synthesizable files for processor instances
-   */
   async parseAllSynthesizableFiles() {
     this.processorInstancesMap = {};
     
@@ -934,9 +788,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Extract processor instances from file content
-   */
   extractInstancesFromContent(content) {
     if (!content) return;
     
@@ -983,9 +834,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Load available processors
-   */
   async loadAvailableProcessors() {
     try {
       const projectInfo = await window.electronAPI.getCurrentProject();
@@ -1007,9 +855,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Handle processor list clicks (delete buttons)
-   */
   handleProcessorListClick(event) {
     const deleteBtn = event.target.closest('.delete-processor');
     if (deleteBtn) {
@@ -1032,9 +877,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Add processor row
-   */
   addProcessorRow() {
     const newRow = document.createElement('div');
     newRow.className = 'modalConfig-processor-row';
@@ -1082,9 +924,6 @@ async importFiles(files, type) {
     this.elements.processorsList.appendChild(newRow);
   }
   
-  /**
-   * Populate processor select with available processors
-   */
   populateAvailableProcessors(selectElement, selectedValue = '') {
     if (!selectElement) return;
     
@@ -1106,9 +945,6 @@ async importFiles(files, type) {
     });
   }
   
-  /**
-   * Update instance select based on processor type
-   */
   updateInstanceSelect(processorType, instanceSelectElement) {
     if (!instanceSelectElement) return;
     
@@ -1140,9 +976,6 @@ async importFiles(files, type) {
     });
   }
   
-  /**
-   * Refresh all processor selects
-   */
   refreshAllProcessorSelects() {
     const processorRows = this.elements.processorsList.querySelectorAll('.modalConfig-processor-row');
     
@@ -1155,9 +988,6 @@ async importFiles(files, type) {
     });
   }
   
-  /**
-   * Refresh all instance selects
-   */
   refreshAllInstanceSelects() {
     const processorRows = this.elements.processorsList.querySelectorAll('.modalConfig-processor-row');
     
@@ -1185,9 +1015,6 @@ async importFiles(files, type) {
     });
   }
   
-  /**
-   * Open modal and prepare data
-   */
   async openModal() {
     if (!this.elements.modal) return;
     
@@ -1197,7 +1024,11 @@ async importFiles(files, type) {
     
     await this.loadAvailableProcessors();
     await this.loadConfiguration();
-    await this.parseAllSynthesizableFiles();
+    
+    if (!this.isFileMode) {
+      await this.parseAllSynthesizableFiles();
+    }
+    
     this.updateFormWithConfig();
     
     const focusable = this.elements.modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -1206,9 +1037,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Close modal
-   */
   closeModal() {
     if (!this.elements.modal) return;
     
@@ -1220,9 +1048,6 @@ async importFiles(files, type) {
     }
   }
   
-  /**
-   * Load project configuration
-   */
   async loadConfiguration() {
     try {
       this.currentConfig = {
@@ -1257,6 +1082,26 @@ async importFiles(files, type) {
         return;
       }
       
+      // Check for File Mode config first
+      const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, this.FILE_MODE_CONFIG_FILENAME);
+      const fileModeExists = await window.electronAPI.fileExists(fileModeConfigPath);
+      
+      if (fileModeExists) {
+        const configContent = await window.electronAPI.readFile(fileModeConfigPath);
+        this.fileModeConfig = JSON.parse(configContent);
+        this.isFileMode = true;
+        
+        if (this.elements.fileModeToggle) {
+          this.elements.fileModeToggle.checked = true;
+        }
+        
+        await this.loadAndValidateFiles(this.fileModeConfig.synthesizableFiles, 'synthesizable');
+        this.updateFileList('synthesizable');
+        this.toggleFileMode(true);
+        return;
+      }
+      
+      // Load standard project config
       const configPath = await window.electronAPI.joinPath(projectPath, this.CONFIG_FILENAME);
       const configExists = await window.electronAPI.fileExists(configPath);
       
@@ -1264,65 +1109,69 @@ async importFiles(files, type) {
         const configContent = await window.electronAPI.readFile(configPath);
         const configData = JSON.parse(configContent);
         this.currentConfig = configData;
+        this.isFileMode = false;
         
-        // Load and validate files
+        if (this.elements.fileModeToggle) {
+          this.elements.fileModeToggle.checked = false;
+        }
+        
         await this.loadAndValidateFiles(configData.synthesizableFiles, 'synthesizable');
         await this.loadAndValidateFiles(configData.testbenchFiles, 'testbench');
         await this.loadAndValidateFiles(configData.gtkwFiles, 'gtkw');
         
         this.updateFileList('synthesizable');
         this.updateFileList('testbench');
+        this.toggleFileMode(false);
       }
     } catch (error) {
       console.error('Error loading project configuration:', error);
     }
   }
   
-  /**
-   * Load and validate files
-   */
- /**
- * Load and validate files (without size property)
- */
-async loadAndValidateFiles(files, type) {
-  if (!files || !Array.isArray(files)) return;
-  
-  const validFiles = [];
-  
-  for (const fileData of files) {
-    if (fileData.path && fileData.path !== '') {
-      try {
-        const exists = await window.electronAPI.fileExists(fileData.path);
-        
-        if (exists) {
-          validFiles.push({
-            name: fileData.name,
-            path: fileData.path,
-            starred: fileData.starred || false,
-            type: fileData.type || 'text/plain'
-          });
-        } else {
-          console.warn(`File no longer exists: ${fileData.path}`);
-          this.showNotification(`File not found: ${fileData.name}`, 'warning', 2000);
+  async loadAndValidateFiles(files, type) {
+    if (!files || !Array.isArray(files)) return;
+    
+    const validFiles = [];
+    
+    for (const fileData of files) {
+      if (fileData.path && fileData.path !== '') {
+        try {
+          const exists = await window.electronAPI.fileExists(fileData.path);
+          
+          if (exists) {
+            validFiles.push({
+              name: fileData.name,
+              path: fileData.path,
+              starred: fileData.starred || false,
+              type: fileData.type || 'text/plain'
+            });
+          } else {
+            console.warn(`File no longer exists: ${fileData.path}`);
+            this.showNotification(`File not found: ${fileData.name}`, 'warning', 2000);
+          }
+        } catch (error) {
+          console.error(`Error validating file ${fileData.path}:`, error);
         }
-      } catch (error) {
-        console.error(`Error validating file ${fileData.path}:`, error);
       }
     }
+    
+    if (type === 'synthesizable') {
+      this.synthesizableFiles = validFiles;
+    } else if (type === 'testbench') {
+      this.testbenchFiles = validFiles;
+    } else if (type === 'gtkw') {
+      this.gtkwFiles = validFiles;
+    }
   }
-  
-  if (type === 'synthesizable') {
-    this.synthesizableFiles = validFiles;
-  } else if (type === 'testbench') {
-    this.testbenchFiles = validFiles;
-  } else if (type === 'gtkw') {
-    this.gtkwFiles = validFiles;
-  }
-}
-  /**
-   * Update form with loaded configuration
-   */
+
   updateFormWithConfig() {
+    if (this.isFileMode) {
+      // File Mode: minimal configuration
+      this.toggleFileMode(true);
+      return;
+    }
+    
+    // Full project mode
     if (this.elements.processorsList) {
       this.elements.processorsList.innerHTML = '';
     }
@@ -1370,131 +1219,166 @@ async loadAndValidateFiles(files, type) {
     }
   }
   
-  /**
-   * Save configuration
-   */
- /**
- * Save configuration (without size property)
- */
-// Paste this code to replace the existing saveConfiguration function
-
-async saveConfiguration() {
-  try {
-    // --- VALIDATION START ---
-
-    // 1. Check if at least one synthesizable file has been imported and starred as the top-level.
-    if (this.synthesizableFiles.length === 0) {
-      this.showNotification('You must import at least one synthesizable file (.v, .sv).', 'error', 4000);
-      return; // Stop the saving process
-    }
-    const starredSynthesizable = this.synthesizableFiles.find(file => file.starred);
-    if (!starredSynthesizable) {
-      this.showNotification('You must star one synthesizable file as the top-level module.', 'error', 4000);
-      return; // Stop the saving process
-    }
-
-    // 2. Check if at least one testbench file has been imported and starred.
-    if (this.testbenchFiles.length === 0) {
-      this.showNotification('You must import at least one testbench file (.v, .sv).', 'error', 4000);
-      return; // Stop the saving process
-    }
-    const starredTestbench = this.testbenchFiles.find(file => file.starred);
-    if (!starredTestbench) {
-      this.showNotification('You must star one file as the main testbench.', 'error', 4000);
-      return; // Stop the saving process
-    }
-    
-    // --- VALIDATION END ---
-
-    let projectPath = window.currentProjectPath;
-    
-    if (!projectPath) {
-      const projectData = await window.electronAPI.getCurrentProject();
-      if (projectData && typeof projectData === 'object' && projectData.projectPath) {
-        projectPath = projectData.projectPath;
-        window.currentProjectPath = projectPath;
-      } else if (typeof projectData === 'string') {
-        projectPath = projectData;
-        window.currentProjectPath = projectPath;
-      }
-    }
-    
-    if (!projectPath) {
-      this.showNotification('Project path not available. Cannot save configuration.', 'error', 4000);
-      return;
-    }
-    
-    const starredGtkw = this.gtkwFiles.find(file => file.starred);
-    
-    const processors = [];
-    const processorRows = this.elements.processorsList.querySelectorAll('.modalConfig-processor-row');
-    
-    processorRows.forEach(row => {
-      const processorSelect = row.querySelector('.processor-select');
-      const instanceSelect = row.querySelector('.processor-instance');
+  async saveConfiguration() {
+    try {
+      let projectPath = window.currentProjectPath;
       
-      if (processorSelect && instanceSelect) {
-        const processorType = processorSelect.value;
-        const instanceName = instanceSelect.value;
-        
-        if (processorType && processorType !== '' && instanceName && instanceName !== '') {
-          processors.push({
-            type: processorType,
-            instance: instanceName
-          });
+      if (!projectPath) {
+        const projectData = await window.electronAPI.getCurrentProject();
+        if (projectData && typeof projectData === 'object' && projectData.projectPath) {
+          projectPath = projectData.projectPath;
+          window.currentProjectPath = projectPath;
+        } else if (typeof projectData === 'string') {
+          projectPath = projectData;
+          window.currentProjectPath = projectPath;
         }
       }
-    });
-    
-    const iverilogFlagsValue = this.elements.iverilogFlags ? this.elements.iverilogFlags.value : '';
-    const simuDelayValue = this.elements.projectSimuDelay ? this.elements.projectSimuDelay.value : '200000';
-    const showArraysValue = this.elements.showArraysCheckbox && this.elements.showArraysCheckbox.checked ? 1 : 0;
-    
-    const config = {
-      topLevelFile: starredSynthesizable ? starredSynthesizable.path : '',
-      testbenchFile: starredTestbench ? starredTestbench.path : '',
-      gtkwaveFile: starredGtkw ? starredGtkw.path : '',
-      synthesizableFiles: this.synthesizableFiles.map(file => ({
-        name: file.name,
-        path: file.path,
-        starred: file.starred || false
-      })),
-      testbenchFiles: this.testbenchFiles.map(file => ({
-        name: file.name,
-        path: file.path,
-        starred: file.starred || false
-      })),
-      gtkwFiles: this.gtkwFiles.map(file => ({
-        name: file.name,
-        path: file.path,
-        starred: file.starred || false
-      })),
-      processors: processors,
-      iverilogFlags: iverilogFlagsValue,
-      simuDelay: simuDelayValue,
-      showArraysInGtkwave: showArraysValue
-    };
-    
-    const configPath = await window.electronAPI.joinPath(projectPath, this.CONFIG_FILENAME);
-    await window.electronAPI.writeFile(configPath, JSON.stringify(config, null, 2));
-    
-    console.log('Project configuration saved:', config);
-    this.showNotification('Project configuration saved successfully!', 'success', 3000);
-    
-    this.currentConfig = config;
-    await this.updateProcessorStatus();
-    
-    this.closeModal();
-    
-  } catch (error) {
-    console.error('Error saving project configuration:', error);
-    this.showNotification('Failed to save project configuration. Please try again.', 'error', 4000);
+      
+      if (!projectPath) {
+        this.showNotification('Project path not available. Cannot save configuration.', 'error', 4000);
+        return;
+      }
+      
+      if (this.isFileMode) {
+        // FILE MODE SAVE LOGIC
+        if (this.synthesizableFiles.length === 0) {
+          this.showNotification('You must import at least one Verilog file (.v, .sv).', 'error', 4000);
+          return;
+        }
+        
+        const starredFile = this.synthesizableFiles.find(file => file.starred);
+        if (!starredFile) {
+          this.showNotification('You must star one file as the top-level module.', 'error', 4000);
+          return;
+        }
+        
+        const fileModeConfig = {
+          topLevelFile: starredFile.path,
+          synthesizableFiles: this.synthesizableFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            starred: file.starred || false
+          }))
+        };
+        
+        const configPath = await window.electronAPI.joinPath(projectPath, this.FILE_MODE_CONFIG_FILENAME);
+        await window.electronAPI.writeFile(configPath, JSON.stringify(fileModeConfig, null, 2));
+        
+        // Delete old project config if exists
+        const oldConfigPath = await window.electronAPI.joinPath(projectPath, this.CONFIG_FILENAME);
+        const oldExists = await window.electronAPI.fileExists(oldConfigPath);
+        if (oldExists) {
+          await window.electronAPI.deleteFileOrDirectory(oldConfigPath);
+        }
+        
+        console.log('File Mode configuration saved:', fileModeConfig);
+        this.showNotification('File Mode configuration saved successfully!', 'success', 3000);
+        this.fileModeConfig = fileModeConfig;
+        
+      } else {
+        // FULL PROJECT MODE SAVE LOGIC
+        if (this.synthesizableFiles.length === 0) {
+          this.showNotification('You must import at least one synthesizable file (.v, .sv).', 'error', 4000);
+          return;
+        }
+        
+        const starredSynthesizable = this.synthesizableFiles.find(file => file.starred);
+        if (!starredSynthesizable) {
+          this.showNotification('You must star one synthesizable file as the top-level module.', 'error', 4000);
+          return;
+        }
+
+        if (this.testbenchFiles.length === 0) {
+          this.showNotification('You must import at least one testbench file (.v, .sv).', 'error', 4000);
+          return;
+        }
+        
+        const starredTestbench = this.testbenchFiles.find(file => file.starred);
+        if (!starredTestbench) {
+          this.showNotification('You must star one file as the main testbench.', 'error', 4000);
+          return;
+        }
+        
+        const starredGtkw = this.gtkwFiles.find(file => file.starred);
+        
+        const processors = [];
+        const processorRows = this.elements.processorsList.querySelectorAll('.modalConfig-processor-row');
+        
+        processorRows.forEach(row => {
+          const processorSelect = row.querySelector('.processor-select');
+          const instanceSelect = row.querySelector('.processor-instance');
+          
+          if (processorSelect && instanceSelect) {
+            const processorType = processorSelect.value;
+            const instanceName = instanceSelect.value;
+            
+            if (processorType && processorType !== '' && instanceName && instanceName !== '') {
+              processors.push({
+                type: processorType,
+                instance: instanceName
+              });
+            }
+          }
+        });
+        
+        const iverilogFlagsValue = this.elements.iverilogFlags ? this.elements.iverilogFlags.value : '';
+        const simuDelayValue = this.elements.projectSimuDelay ? this.elements.projectSimuDelay.value : '200000';
+        const showArraysValue = this.elements.showArraysCheckbox && this.elements.showArraysCheckbox.checked ? 1 : 0;
+        
+        const config = {
+          topLevelFile: starredSynthesizable.path,
+          testbenchFile: starredTestbench.path,
+          gtkwaveFile: starredGtkw ? starredGtkw.path : '',
+          synthesizableFiles: this.synthesizableFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            starred: file.starred || false
+          })),
+          testbenchFiles: this.testbenchFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            starred: file.starred || false
+          })),
+          gtkwFiles: this.gtkwFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            starred: file.starred || false
+          })),
+          processors: processors,
+          iverilogFlags: iverilogFlagsValue,
+          simuDelay: simuDelayValue,
+          showArraysInGtkwave: showArraysValue
+        };
+        
+        const configPath = await window.electronAPI.joinPath(projectPath, this.CONFIG_FILENAME);
+        await window.electronAPI.writeFile(configPath, JSON.stringify(config, null, 2));
+        
+        // Delete file mode config if exists
+        const fileModeConfigPath = await window.electronAPI.joinPath(projectPath, this.FILE_MODE_CONFIG_FILENAME);
+        const fileModeExists = await window.electronAPI.fileExists(fileModeConfigPath);
+        if (fileModeExists) {
+          await window.electronAPI.deleteFileOrDirectory(fileModeConfigPath);
+        }
+        
+        console.log('Project configuration saved:', config);
+        this.showNotification('Project configuration saved successfully!', 'success', 3000);
+        this.currentConfig = config;
+        await this.updateProcessorStatus();
+      }
+      
+      this.closeModal();
+      
+      // Trigger file tree refresh
+      if (typeof window.refreshProjectFiles === 'function') {
+        window.refreshProjectFiles();
+      }
+      
+    } catch (error) {
+      console.error('Error saving project configuration:', error);
+      this.showNotification('Failed to save project configuration. Please try again.', 'error', 4000);
+    }
   }
-}
   
-  /**
-   * Update processor status display
-   */
   async updateProcessorStatus() {
     const el = this.elements.processorStatus;
     if (!el) return;
@@ -1518,9 +1402,6 @@ async saveConfiguration() {
     el.style.opacity = '1';
   }
   
-  /**
-   * Show notification
-   */
   showNotification(message, type = 'info', duration = 3000) {
     if (typeof window.showNotification === 'function') {
       window.showNotification(message, type, duration);
@@ -1623,9 +1504,6 @@ async saveConfiguration() {
     });
   }
   
-  /**
-   * Close notification
-   */
   closeNotification(element) {
     element.style.opacity = '0';
     element.style.transform = 'translateX(20px)';
@@ -1653,4 +1531,4 @@ window.projectOrientedConfig = {
   openModal: () => window.projectOrientedManager?.openModal(),
   saveConfig: () => window.projectOrientedManager?.saveConfiguration(),
   loadConfig: () => window.projectOrientedManager?.loadConfiguration()
-}
+};

@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'open-folder-button': 'Open the current project folder in the system file explorer.',
         'close-button': 'Close the current project and return to the welcome screen.',
         'toggle-file-tree': 'Collapse or expand all folders in the file tree.',
+        'backup-project': 'Backup Project',
         'clear-search': 'Clear the current file search query.',
         'closeModal': 'Close the processor configuration modal without saving changes.',
         'deleteProcessor': 'Delete the currently selected processor configuration.',

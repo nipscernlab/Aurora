@@ -184,7 +184,6 @@
 .file-item-icon {
   margin-right: var(--space-2);
   font-size: var(--text-base);
-  width: 16px;
   text-align: center;
 }
 
